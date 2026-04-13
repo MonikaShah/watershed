@@ -15,13 +15,17 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.http import HttpResponse
-from django.urls import path
+from django.contrib import admin
+from django.urls import path,include
 from ingestion.views import ingest_data, ota
 def home(request):
     return HttpResponse("API is running")
 
 urlpatterns = [
     path('', home),
-    path('api/ingest/', ingest_data, name='ingest'),
-    path('api/ota/<str:device_type>/', ota, name='ota'),
+    path('api/custom/ingest/', ingest_data, name='ingest'),
+    path('api/custom/ota/<str:device_type>/', ota, name='ota'),
+    path('admin/', admin.site.urls),
+    path('dashboard/', include('ingestion.urls')),
+    
 ]
