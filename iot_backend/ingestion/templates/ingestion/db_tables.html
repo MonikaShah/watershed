@@ -1,0 +1,9 @@
+<h2>Database Tables</h2>
+
+<ul>
+{% for t in tables %}
+    <li>
+        <a href="/dashboard/db/{{ t }}/">{{ t }}</a>
+    </li>
+{% endfor %}
+</ul>
