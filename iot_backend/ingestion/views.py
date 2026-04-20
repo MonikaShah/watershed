@@ -1,17 +1,18 @@
 from django.shortcuts import render
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-import os
-from django.db import connection
+import os,json
+import requests
+# from django.db import connection
 import pandas as pd
 from django.http import HttpResponse
 from django.shortcuts import render
 from .models import Device
-from .utils import fetch_device_data
+# from .utils import fetch_device_data
 
-TB_URL = "http://127.0.0.1:8080"
-TB_USERNAME = "thingsboard"       # e.g admin@thingsboard.org
-TB_PASSWORD = "thingsboard_pass"
+TB_URL = "https://watershed.mahamaps.com"
+TB_USERNAME = "monikapatira@gmail.com"       # e.g admin@thingsboard.org
+TB_PASSWORD = "Tenant@watershed#"
 
 @api_view(['POST'])
 def ingest_data(request):
@@ -144,7 +145,7 @@ def get_telemetry(token, device_id, start_ts, end_ts):
 # ----------------------------
 # Dashboard page
 # ----------------------------
-@api_view(['GET'])
+# @api_view(['GET'])
 def dashboard(request):
     token = get_tb_token()
     devices = get_tb_devices(token)
@@ -165,70 +166,74 @@ def dashboard(request):
         if not df.empty:
             df = df.fillna("")
             columns = df.columns.tolist()
+            df["time"] = df["time"].astype(str)
             table_data = df.to_dict(orient="records")
 
     return render(
-        request._request,
+        request,
         "ingestion/dashboard.html",
         {
             "devices": devices,
             "table_data": table_data,
-            "columns": columns
-        }
-    )
-
-def db_tables(request):
-    with connection.cursor() as cursor:
-        cursor.execute("""
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_schema = 'public'
-        """)
-        tables = [row[0] for row in cursor.fetchall()]
-
-    return render(request, "ingestion/db_tables.html", {"tables": tables})
-
-
-# ----------------------------
-# View Table Data (SAFE)
-# ----------------------------
-def db_table_view(request, table_name):
-    limit = int(request.GET.get("limit", 100))
-
-    # whitelist tables
-    with connection.cursor() as cursor:
-        cursor.execute("""
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_schema = 'public'
-        """)
-        valid_tables = [row[0] for row in cursor.fetchall()]
-
-    if table_name not in valid_tables:
-        return HttpResponse("Invalid table", status=400)
-
-    with connection.cursor() as cursor:
-        cursor.execute(f'SELECT * FROM "{table_name}" LIMIT %s', [limit])
-        columns = [col[0] for col in cursor.description]
-        rows = cursor.fetchall()
-
-    data = [dict(zip(columns, row)) for row in rows]
-
-    return render(
-        request,
-        "ingestion/db_table.html",
-        {
-            "table_name": table_name,
             "columns": columns,
-            "rows": data
+            "selected_device": device_id,
+            "from_date": from_date,
+            "to_date": to_date,
         }
     )
+
+# def db_tables(request):
+#     with connection.cursor() as cursor:
+#         cursor.execute("""
+#             SELECT table_name 
+#             FROM information_schema.tables 
+#             WHERE table_schema = 'public'
+#         """)
+#         tables = [row[0] for row in cursor.fetchall()]
+
+#     return render(request, "ingestion/db_tables.html", {"tables": tables})
+
+
+# # ----------------------------
+# # View Table Data (SAFE)
+# # ----------------------------
+# def db_table_view(request, table_name):
+#     limit = int(request.GET.get("limit", 100))
+
+#     # whitelist tables
+#     with connection.cursor() as cursor:
+#         cursor.execute("""
+#             SELECT table_name 
+#             FROM information_schema.tables 
+#             WHERE table_schema = 'public'
+#         """)
+#         valid_tables = [row[0] for row in cursor.fetchall()]
+
+#     if table_name not in valid_tables:
+#         return HttpResponse("Invalid table", status=400)
+
+#     with connection.cursor() as cursor:
+#         cursor.execute(f'SELECT * FROM "{table_name}" LIMIT %s', [limit])
+#         columns = [col[0] for col in cursor.description]
+#         rows = cursor.fetchall()
+
+#     data = [dict(zip(columns, row)) for row in rows]
+
+#     return render(
+#         request,
+#         "ingestion/db_table.html",
+#         {
+#             "table_name": table_name,
+#             "columns": columns,
+#             "rows": data
+#         }
+#     )
 
 
 # ----------------------------
 # CSV Export
 # ----------------------------
-@api_view(['GET'])
+
 def export_csv(request):
     token = get_tb_token()
 
@@ -241,8 +246,26 @@ def export_csv(request):
 
     df = get_telemetry(token, device_id, start_ts, end_ts)
 
+    if df.empty:
+        return HttpResponse("No data", status=204)
+
+    df["time"] = df["time"].astype(str)
+
+    # ✅ get device name ONCE
+    devices = get_tb_devices(token)
+    device_name = next(
+        (d["name"] for d in devices if d["id"]["id"] == device_id),
+        "device"
+    )
+
+    filename = f"{device_name}_{from_date}_to_{to_date}.csv"
+
     response = HttpResponse(content_type="text/csv")
-    response["Content-Disposition"] = "attachment; filename=telemetry.csv"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+    response.write(f"Device:,{device_name}\n")
+    response.write(f"From:,{from_date}\n")
+    response.write(f"To:,{to_date}\n\n")
 
     df.to_csv(response, index=False)
 

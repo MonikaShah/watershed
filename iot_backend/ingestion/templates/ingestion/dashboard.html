@@ -1,0 +1,160 @@
+{% load custom_tags %}
+<!DOCTYPE html>
+<html>
+<head>
+  <title>TiH - IoT Sambhav Devices Dashboard</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      background: #f5f7fa;
+      padding: 20px;
+    }
+
+    h2 { margin-bottom: 20px; }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    select, input {
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+    }
+
+    button {
+      background: #2ba0c7;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    canvas {
+      max-height: 400px;
+    }
+  </style>
+</head>
+
+<body>
+
+<h2>📊 TiH - IoT Sambhav Devices Dashboard</h2>
+
+<!-- Filters -->
+<div class="card">
+  <form method="get" class="form-row">
+
+    <div>
+      <label>Device</label><br>
+      <select name="device">
+        {% for d in devices %}
+          <option value="{{ d.id.id }}" {% if d.id.id == selected_device %}selected{% endif %}>
+            {{ d.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label>From</label><br>
+      <input type="date" name="from_date" value="{{ from_date }}">
+    </div>
+
+    <div>
+      <label>To</label><br>
+      <input type="date" name="to_date" value="{{ to_date }}">
+    </div>
+
+    
+    <div style="align-self: flex-end;">
+        <button type="submit">Load</button>
+
+        {% if selected_device and from_date and to_date %}
+            <a href="/dashboard/tb-dashboard/export-csv/?device={{ selected_device }}&from_date={{ from_date }}&to_date={{ to_date }}">
+            <button type="button" style="margin-left:10px; background:#4caf50;">
+                ⬇ Download CSV
+            </button>
+            </a>
+        {% endif %}
+        </div>
+  </form>
+</div>
+
+<!-- Chart -->
+<div class="card">
+  <canvas id="chart"></canvas>
+</div>
+
+<!-- Table -->
+<div class="card">
+  <table border="1" width="100%">
+    <tr>
+      {% for col in columns %}
+        <th>{{ col }}</th>
+      {% endfor %}
+    </tr>
+
+    {% for row in table_data %}
+    <tr>
+      {% for col in columns %}
+        <td>{{ row|get_item:col }}</td>
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{{ table_data|json_script:"table-data" }}
+{{ columns|json_script:"columns-data" }}
+
+<script>
+  const rawData = JSON.parse(document.getElementById('table-data').textContent);
+  const columns = JSON.parse(document.getElementById('columns-data').textContent);
+
+  console.log("DATA:", rawData);
+
+  if (rawData.length > 0) {
+
+    const labels = rawData.map(r => r.time);
+    const metrics = columns.filter(c => c !== "time");
+
+    const datasets = metrics.map(metric => ({
+      label: metric,
+      data: rawData.map(r => {
+        const val = r[metric];
+        return val === "" || val === null ? null : Number(val);
+      }),
+      borderWidth: 2,
+      tension: 0.3
+    }));
+
+    new Chart(document.getElementById('chart'), {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        interaction: {
+          mode: 'index',
+          intersect: false
+        }
+      }
+    });
+  }
+</script>
+
+</body>
+</html>
