@@ -26,6 +26,5 @@ urlpatterns = [
     path('api/custom/ingest/', ingest_data, name='ingest'),
     path('api/custom/ota/<str:device_type>/', ota, name='ota'),
     path('admin/', admin.site.urls),
-    path('dashboard/', include('ingestion.urls')),
-    
+    path('custom-dashboard/', include('ingestion.urls')),    
 ]
