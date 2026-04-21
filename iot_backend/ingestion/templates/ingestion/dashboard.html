@@ -47,6 +47,25 @@
 
     canvas {
       max-height: 400px;
+      width: 100% !important;
+    }
+
+    table {
+      display: block;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    th, td {
+      padding: 8px 12px;
+      text-align: center;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: #f1f1f1;
+      z-index: 2;
     }
   </style>
 </head>
@@ -55,10 +74,14 @@
 
 <h2>📊 TiH - IoT Sambhav Devices Dashboard</h2>
 
-<!-- Filters -->
 <div class="card">
-  <form method="get" class="form-row">
+  <b>DEBUG INFO</b><br>
+  Rows: {{ table_data|length }} <br>
+  Columns: {{ columns|length }} <br>
+  Device: {{ selected_device }}
 
+  <!-- FILTER FORM -->
+  <form method="get" class="form-row">
     <div>
       <label>Device</label><br>
       <select name="device">
@@ -80,32 +103,41 @@
       <input type="date" name="to_date" value="{{ to_date }}">
     </div>
 
-    
     <div style="align-self: flex-end;">
-        <button type="submit">Load</button>
-
-        {% if selected_device and from_date and to_date %}
-            <a href="/dashboard/tb-dashboard/export-csv/?device={{ selected_device }}&from_date={{ from_date }}&to_date={{ to_date }}">
-            <button type="button" style="margin-left:10px; background:#4caf50;">
-                ⬇ Download CSV
-            </button>
-            </a>
-        {% endif %}
-        </div>
+      <button type="submit">Load</button>
+    </div>
   </form>
+
+  <!-- EXPORT FORM -->
+  {% if selected_device and from_date and to_date %}
+  <form method="post" action="{% url 'export_csv' %}" style="margin-top:10px;">
+    {% csrf_token %}
+    
+    <input type="hidden" name="device" value="{{ selected_device }}">
+    <input type="hidden" name="from_date" value="{{ from_date }}">
+    <input type="hidden" name="to_date" value="{{ to_date }}">
+    
+    <input type="hidden" name="table_data" id="tableDataInput">
+    <input type="hidden" name="columns" id="columnsInput">
+
+    <button type="submit" style="background:#4caf50;">
+      ⬇ Download CSV
+    </button>
+  </form>
+  {% endif %}
 </div>
 
-<!-- Chart -->
+<!-- CHART -->
 <div class="card">
   <canvas id="chart"></canvas>
 </div>
 
-<!-- Table -->
+<!-- TABLE -->
 <div class="card">
   <table border="1" width="100%">
     <tr>
       {% for col in columns %}
-        <th>{{ col }}</th>
+        <th>{{ col|cut:"SAMBHAV_0035002C_" }}</th>
       {% endfor %}
     </tr>
 
@@ -118,22 +150,34 @@
     {% endfor %}
   </table>
 </div>
+
+<!-- SAFE JSON -->
 {{ table_data|json_script:"table-data" }}
 {{ columns|json_script:"columns-data" }}
 
 <script>
+  // ✅ Parse data safely
   const rawData = JSON.parse(document.getElementById('table-data').textContent);
   const columns = JSON.parse(document.getElementById('columns-data').textContent);
 
   console.log("DATA:", rawData);
 
-  if (rawData.length > 0) {
+  // ✅ Fill export form safely
+  const tableInput = document.getElementById('tableDataInput');
+  const columnsInput = document.getElementById('columnsInput');
 
+  if (tableInput && columnsInput) {
+    tableInput.value = JSON.stringify(rawData);
+    columnsInput.value = JSON.stringify(columns);
+  }
+
+  // ✅ Render chart
+  if (rawData.length > 0) {
     const labels = rawData.map(r => r.time);
     const metrics = columns.filter(c => c !== "time");
 
     const datasets = metrics.map(metric => ({
-      label: metric,
+      label: metric.split("_").slice(-1)[0],  // clean label
       data: rawData.map(r => {
         const val = r[metric];
         return val === "" || val === null ? null : Number(val);
@@ -150,6 +194,15 @@
         interaction: {
           mode: 'index',
           intersect: false
+        },
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              boxWidth: 12,
+              font: { size: 10 }
+            }
+          }
         }
       }
     });

@@ -80,8 +80,11 @@ def get_telemetry(token, device_id, start_ts, end_ts):
 
     keys = keys_resp.json()
 
+    # if not keys:
+    #     return pd.DataFrame()
     if not keys:
-        return pd.DataFrame()
+        print("⚠️ No keys found, using fallback keys")
+        keys = ["temperature", "humidity", "battery"]  # adjust based on your device
 
     keys_str = ",".join(keys)
 
@@ -139,6 +142,23 @@ def get_telemetry(token, device_id, start_ts, end_ts):
         aggfunc="first"
     ).reset_index()
 
+    print("DEVICE:", device_id)
+    print("KEYS:", keys)
+    print("START:", start_ts, "END:", end_ts)
+    print("RAW DATA:", data)
+
+    print("\n====== DASHBOARD DEBUG ======")
+    print("DEVICE:", device_id)
+    print("FROM:", start_ts, "TO:", end_ts  )
+
+    print("DF EMPTY?", df.empty)
+    print("DF SHAPE:", df.shape)
+
+    if not df.empty:
+        print("COLUMNS:", df.columns.tolist())
+        print(df.head())
+    else:
+        print("⚠️ DataFrame is EMPTY")
     return pivot_df
 
 
@@ -158,15 +178,23 @@ def dashboard(request):
     to_date = request.GET.get("to_date")
 
     if device_id and from_date and to_date:
-        start_ts = int(pd.Timestamp(from_date).timestamp() * 1000)
-        end_ts = int(pd.Timestamp(to_date).timestamp() * 1000)
-
+        # start_ts = int(pd.Timestamp(from_date).timestamp() * 1000)
+        # end_ts = int(pd.Timestamp(to_date).timestamp() * 1000)
+        start_ts = int(pd.Timestamp(from_date).tz_localize('Asia/Kolkata').timestamp() * 1000)
+        end_ts = int((pd.Timestamp(to_date) + pd.Timedelta(days=1)).tz_localize('Asia/Kolkata').timestamp() * 1000)
+        
         df = get_telemetry(token, device_id, start_ts, end_ts)
 
         if not df.empty:
             df = df.fillna("")
             columns = df.columns.tolist()
-            df["time"] = df["time"].astype(str)
+            df["time"] = pd.to_datetime(df["time"], errors="coerce")
+
+            # convert UTC → IST
+            df["time"] = df["time"].dt.tz_localize("UTC").dt.tz_convert("Asia/Kolkata")
+
+            # format nicely
+            df["time"] = df["time"].dt.strftime("%d-%b-%Y %I:%M %p")
             table_data = df.to_dict(orient="records")
 
     return render(
@@ -235,38 +263,30 @@ def dashboard(request):
 # ----------------------------
 
 def export_csv(request):
-    token = get_tb_token()
+    if request.method == "POST":
+        table_data = json.loads(request.POST.get("table_data", "[]"))
+        columns = json.loads(request.POST.get("columns", "[]"))
 
-    device_id = request.GET.get("device")
-    from_date = request.GET.get("from_date")
-    to_date = request.GET.get("to_date")
+        if not table_data:
+            return HttpResponse("No data available", status=200)
 
-    start_ts = int(pd.Timestamp(from_date).timestamp() * 1000)
-    end_ts = int(pd.Timestamp(to_date).timestamp() * 1000)
+        df = pd.DataFrame(table_data)
 
-    df = get_telemetry(token, device_id, start_ts, end_ts)
+        # ✅ FIX NaT / NaN crash
+        df = df.fillna("")
+        if "time" in df.columns:
+            df["time"] = pd.to_datetime(df["time"], errors="coerce")
+            df["time"] = df["time"].dt.tz_localize("UTC").dt.tz_convert("Asia/Kolkata")
+            df["time"] = df["time"].dt.strftime("%d-%b-%Y %I:%M %p")
 
-    if df.empty:
-        return HttpResponse("No data", status=204)
+        device = request.POST.get("device", "device")
+        from_date = request.POST.get("from_date", "")
+        to_date = request.POST.get("to_date", "")
 
-    df["time"] = df["time"].astype(str)
+        filename = f"{device}_{from_date}_to_{to_date}.csv"
 
-    # ✅ get device name ONCE
-    devices = get_tb_devices(token)
-    device_name = next(
-        (d["name"] for d in devices if d["id"]["id"] == device_id),
-        "device"
-    )
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
 
-    filename = f"{device_name}_{from_date}_to_{to_date}.csv"
-
-    response = HttpResponse(content_type="text/csv")
-    response["Content-Disposition"] = f'attachment; filename="{filename}"'
-
-    response.write(f"Device:,{device_name}\n")
-    response.write(f"From:,{from_date}\n")
-    response.write(f"To:,{to_date}\n\n")
-
-    df.to_csv(response, index=False)
-
-    return response
+        df.to_csv(response, index=False)
+        return response
