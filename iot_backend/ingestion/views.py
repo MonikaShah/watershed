@@ -48,7 +48,7 @@ def get_tb_token():
         "password": TB_PASSWORD
     }
 
-    r = requests.post(url, json=payload)
+    r = requests.post(url, json=payload, timeout=10)
     r.raise_for_status()
 
     return r.json()["token"]
@@ -61,7 +61,7 @@ def get_tb_devices(token):
         "X-Authorization": f"Bearer {token}"
     }
 
-    r = requests.get(url, headers=headers)
+    r = requests.get(url, headers=headers, timeout=10)
     r.raise_for_status()
 
     return r.json()["data"]
