@@ -75,7 +75,7 @@ def get_telemetry(token, device_id, start_ts, end_ts):
         "X-Authorization": f"Bearer {token}"
     }
 
-    keys_resp = requests.get(keys_url, headers=headers, timeout=20)
+    keys_resp = requests.get(keys_url, headers=headers)
     keys_resp.raise_for_status()
 
     keys = keys_resp.json()
@@ -93,11 +93,10 @@ def get_telemetry(token, device_id, start_ts, end_ts):
         f"?keys={keys_str}"
         f"&startTs={start_ts}"
         f"&endTs={end_ts}"
-        f"&limit=2000"
-        "&agg=AVG&interval=60000"
+        f"&limit=50000"
     )
 
-    r = requests.get(data_url, headers=headers, timeout=20)
+    r = requests.get(data_url, headers=headers)
     r.raise_for_status()
 
     data = r.json()
@@ -136,31 +135,31 @@ def get_telemetry(token, device_id, start_ts, end_ts):
 
     df = pd.DataFrame(rows)
 
-    # pivot_df = df.pivot_table(
-    #     index="time",
-    #     columns="key",
-    #     values="value",
-    #     aggfunc="first"
-    # ).reset_index()
+    pivot_df = df.pivot_table(
+        index="time",
+        columns="key",
+        values="value",
+        aggfunc="first"
+    ).reset_index()
 
-    # print("DEVICE:", device_id)
-    # print("KEYS:", keys)
-    # print("START:", start_ts, "END:", end_ts)
-    # print("RAW DATA:", data)
+    print("DEVICE:", device_id)
+    print("KEYS:", keys)
+    print("START:", start_ts, "END:", end_ts)
+    print("RAW DATA:", data)
 
-    # print("\n====== DASHBOARD DEBUG ======")
-    # print("DEVICE:", device_id)
-    # print("FROM:", start_ts, "TO:", end_ts  )
+    print("\n====== DASHBOARD DEBUG ======")
+    print("DEVICE:", device_id)
+    print("FROM:", start_ts, "TO:", end_ts  )
 
-    # print("DF EMPTY?", df.empty)
-    # print("DF SHAPE:", df.shape)
+    print("DF EMPTY?", df.empty)
+    print("DF SHAPE:", df.shape)
 
-    # if not df.empty:
-    #     print("COLUMNS:", df.columns.tolist())
-    #     print(df.head())
-    # else:
-    #     print("⚠️ DataFrame is EMPTY")
-    return df
+    if not df.empty:
+        print("COLUMNS:", df.columns.tolist())
+        print(df.head())
+    else:
+        print("⚠️ DataFrame is EMPTY")
+    return pivot_df
 
 
 # ----------------------------
