@@ -142,23 +142,23 @@ def get_telemetry(token, device_id, start_ts, end_ts):
         aggfunc="first"
     ).reset_index()
 
-    print("DEVICE:", device_id)
-    print("KEYS:", keys)
-    print("START:", start_ts, "END:", end_ts)
-    print("RAW DATA:", data)
+    # print("DEVICE:", device_id)
+    # print("KEYS:", keys)
+    # print("START:", start_ts, "END:", end_ts)
+    # print("RAW DATA:", data)
 
-    print("\n====== DASHBOARD DEBUG ======")
-    print("DEVICE:", device_id)
-    print("FROM:", start_ts, "TO:", end_ts  )
+    # print("\n====== DASHBOARD DEBUG ======")
+    # print("DEVICE:", device_id)
+    # print("FROM:", start_ts, "TO:", end_ts  )
 
-    print("DF EMPTY?", df.empty)
-    print("DF SHAPE:", df.shape)
+    # print("DF EMPTY?", df.empty)
+    # print("DF SHAPE:", df.shape)
 
-    if not df.empty:
-        print("COLUMNS:", df.columns.tolist())
-        print(df.head())
-    else:
-        print("⚠️ DataFrame is EMPTY")
+    # if not df.empty:
+    #     print("COLUMNS:", df.columns.tolist())
+    #     print(df.head())
+    # else:
+    #     print("⚠️ DataFrame is EMPTY")
     return pivot_df
 
 
