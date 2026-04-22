@@ -75,7 +75,7 @@ def get_telemetry(token, device_id, start_ts, end_ts):
         "X-Authorization": f"Bearer {token}"
     }
 
-    keys_resp = requests.get(keys_url, headers=headers)
+    keys_resp = requests.get(keys_url, headers=headers, timeout=20))
     keys_resp.raise_for_status()
 
     keys = keys_resp.json()
@@ -93,10 +93,11 @@ def get_telemetry(token, device_id, start_ts, end_ts):
         f"?keys={keys_str}"
         f"&startTs={start_ts}"
         f"&endTs={end_ts}"
-        f"&limit=20000"
+        f"&limit=2000"
+        "&agg=AVG&interval=60000"
     )
 
-    r = requests.get(data_url, headers=headers)
+    r = requests.get(data_url, headers=headers, timeout=20)
     r.raise_for_status()
 
     data = r.json()
@@ -135,12 +136,12 @@ def get_telemetry(token, device_id, start_ts, end_ts):
 
     df = pd.DataFrame(rows)
 
-    pivot_df = df.pivot_table(
-        index="time",
-        columns="key",
-        values="value",
-        aggfunc="first"
-    ).reset_index()
+    # pivot_df = df.pivot_table(
+    #     index="time",
+    #     columns="key",
+    #     values="value",
+    #     aggfunc="first"
+    # ).reset_index()
 
     # print("DEVICE:", device_id)
     # print("KEYS:", keys)
