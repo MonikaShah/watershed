@@ -75,7 +75,7 @@ def get_telemetry(token, device_id, start_ts, end_ts):
         "X-Authorization": f"Bearer {token}"
     }
 
-    keys_resp = requests.get(keys_url, headers=headers, timeout=20))
+    keys_resp = requests.get(keys_url, headers=headers, timeout=20)
     keys_resp.raise_for_status()
 
     keys = keys_resp.json()
