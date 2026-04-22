@@ -93,7 +93,7 @@ def get_telemetry(token, device_id, start_ts, end_ts):
         f"?keys={keys_str}"
         f"&startTs={start_ts}"
         f"&endTs={end_ts}"
-        f"&limit=50000"
+        f"&limit=20000"
     )
 
     r = requests.get(data_url, headers=headers)
