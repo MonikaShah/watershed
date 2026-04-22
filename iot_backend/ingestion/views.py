@@ -168,49 +168,48 @@ def get_telemetry(token, device_id, start_ts, end_ts):
 # ----------------------------
 # @api_view(['GET'])
 def dashboard(request):
-    # token = get_tb_token()
-    # devices = get_tb_devices(token)
+    token = get_tb_token()
+    devices = get_tb_devices(token)
 
-    # table_data = []
-    # columns = []
+    table_data = []
+    columns = []
 
-    # device_id = request.GET.get("device")
-    # from_date = request.GET.get("from_date")
-    # to_date = request.GET.get("to_date")
+    device_id = request.GET.get("device")
+    from_date = request.GET.get("from_date")
+    to_date = request.GET.get("to_date")
 
-    # if device_id and from_date and to_date:
-    #     # start_ts = int(pd.Timestamp(from_date).timestamp() * 1000)
-    #     # end_ts = int(pd.Timestamp(to_date).timestamp() * 1000)
-    #     start_ts = int(pd.Timestamp(from_date).tz_localize('Asia/Kolkata').timestamp() * 1000)
-    #     end_ts = int((pd.Timestamp(to_date) + pd.Timedelta(days=1)).tz_localize('Asia/Kolkata').timestamp() * 1000)
+    if device_id and from_date and to_date:
+        # start_ts = int(pd.Timestamp(from_date).timestamp() * 1000)
+        # end_ts = int(pd.Timestamp(to_date).timestamp() * 1000)
+        start_ts = int(pd.Timestamp(from_date).tz_localize('Asia/Kolkata').timestamp() * 1000)
+        end_ts = int((pd.Timestamp(to_date) + pd.Timedelta(days=1)).tz_localize('Asia/Kolkata').timestamp() * 1000)
         
-    #     df = get_telemetry(token, device_id, start_ts, end_ts)
+        df = get_telemetry(token, device_id, start_ts, end_ts)
 
-    #     if not df.empty:
-    #         df = df.fillna("")
-    #         columns = df.columns.tolist()
-    #         df["time"] = pd.to_datetime(df["time"], errors="coerce")
+        if not df.empty:
+            df = df.fillna("")
+            columns = df.columns.tolist()
+            df["time"] = pd.to_datetime(df["time"], errors="coerce")
 
-    #         # convert UTC → IST
-    #         df["time"] = df["time"].dt.tz_localize("UTC").dt.tz_convert("Asia/Kolkata")
+            # convert UTC → IST
+            df["time"] = df["time"].dt.tz_localize("UTC").dt.tz_convert("Asia/Kolkata")
 
-    #         # format nicely
-    #         df["time"] = df["time"].dt.strftime("%d-%b-%Y %I:%M %p")
-    #         table_data = df.to_dict(orient="records")
+            # format nicely
+            df["time"] = df["time"].dt.strftime("%d-%b-%Y %I:%M %p")
+            table_data = df.to_dict(orient="records")
 
-    # return render(
-    #     request,
-    #     "ingestion/dashboard.html",
-    #     {
-    #         "devices": devices,
-    #         "table_data": table_data,
-    #         "columns": columns,
-    #         "selected_device": device_id,
-    #         "from_date": from_date,
-    #         "to_date": to_date,
-    #     }
-    # )
-        return HttpResponse("DJANGO WORKING")
+    return render(
+        request,
+        "ingestion/dashboard.html",
+        {
+            "devices": devices,
+            "table_data": table_data,
+            "columns": columns,
+            "selected_device": device_id,
+            "from_date": from_date,
+            "to_date": to_date,
+        }
+    )
 
 # def db_tables(request):
 #     with connection.cursor() as cursor:
