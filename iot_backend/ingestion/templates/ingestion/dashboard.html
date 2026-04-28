@@ -2,32 +2,35 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>TiH - IoT Sambhav Devices Dashboard</title>
+  <title>IoT Dashboard</title>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
 
   <style>
     body {
-      font-family: 'Roboto', sans-serif;
-      background: #f5f7fa;
-      padding: 20px;
+      font-family: 'Inter', sans-serif;
+      background: #f4f6fb;
+      margin: 0;
     }
 
-    h2 { margin-bottom: 20px; }
+    h2 { margin: 0; }
 
-    .card {
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-      padding: 20px;
-      margin-bottom: 20px;
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: white;
+      padding: 15px 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
 
-    .form-row {
+    .controls {
       display: flex;
-      gap: 15px;
+      gap: 10px;
       flex-wrap: wrap;
       align-items: center;
+      margin-top: 10px;
     }
 
     select, input {
@@ -40,173 +43,596 @@
       background: #2ba0c7;
       color: white;
       border: none;
-      padding: 10px 16px;
+      padding: 8px 14px;
       border-radius: 6px;
       cursor: pointer;
     }
 
+    .btn-green { background: #4caf50; }
+    .btn-gray { background: #666; }
+
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .tabs button {
+      background: #eef2f7;
+      color: #555;
+    }
+
+    .tabs button.active {
+      background: #2ba0c7;
+      color: white;
+    }
+
+    .card {
+      background: white;
+      margin: 20px auto;        /* ✅ center horizontally */
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      max-width: 1200px;        /* ✅ limit width */
+      width: 95%;
+    }
+
     canvas {
-      max-height: 400px;
       width: 100% !important;
+      height: auto !important;
+      max-height: 450px;
+    }
+    card .tabs {
+      margin-bottom: 15px;
     }
 
-    table {
-      display: block;
-      overflow-x: auto;
-      white-space: nowrap;
+    /* extra breathing space */
+    .stats {
+        margin-top: 10px;
+    }
+     .stat-box {
+      background: linear-gradient(135deg, #f8fbff, #eaf2fb);
+      padding: 14px;
+      border-radius: 12px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.06);
+      text-align: center;
+      transition: transform 0.2s ease;
     }
 
-    th, td {
-      padding: 8px 12px;
+    .stat-box:hover {
+      transform: translateY(-3px);
+    }
+
+    .stat-title {
+      font-weight: 600;
+      font-size: 13px;
+      margin-bottom: 8px;
+      color: #2ba0c7;
+    }
+
+    .stat-line {
+      font-size: 13px;
+      margin: 4px 0;
+    }
+    .table-container {
+      margin-top: 10px;
+
+        }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stat-box {
+      background: linear-gradient(135deg, #f1f5fb, #e6edf7);
+      padding: 12px;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
       text-align: center;
     }
 
-    th {
-      position: sticky;
-      top: 0;
-      background: #f1f1f1;
-      z-index: 2;
+    .stat-title {
+      font-weight: 600;
+      font-size: 13px;
+      margin-bottom: 6px;
+      color: #2ba0c7;
     }
+
+    .stat-line {
+      font-size: 12px;
+      margin: 3px 0;
+    }
+    .toggle-btns button {
+      margin: 3px;
+      font-size: 12px;
+      background: #ddd;
+      color: #333;
+    }
+    th, td {
+      min-width: 120px;
+    }
+    .card > button {
+      margin-bottom: 10px;
+    }
+  @media (max-width: 768px) {
+
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tabs {
+    flex-wrap: wrap;
+  }
+
+  button {
+    width: 100%;
+  }
+
+  .card {
+    margin: 10px;
+    padding: 15px;
+  }
+
+  canvas {
+    height: 300px !important;
+  }
+}
   </style>
 </head>
 
 <body>
 
-<h2>📊 TiH - IoT Sambhav Devices Dashboard</h2>
+<!-- HEADER -->
+<div class="header">
+  <h2>📊 IoT Device Dashboard</h2>
 
-<div class="card">
-  <b>DEBUG INFO</b><br>
-  Rows: {{ table_data|length }} <br>
-  Columns: {{ columns|length }} <br>
-  Device: {{ selected_device }}
+  <form method="get" class="controls">
+    <select name="device">
+      {% for d in devices %}
+        <option value="{{ d.id.id }}" {% if d.id.id == selected_device %}selected{% endif %}>
+          {{ d.name }}
+        </option>
+      {% endfor %}
+    </select>
 
-  <!-- FILTER FORM -->
-  <form method="get" class="form-row">
-    <div>
-      <label>Device</label><br>
-      <select name="device">
-        {% for d in devices %}
-          <option value="{{ d.id.id }}" {% if d.id.id == selected_device %}selected{% endif %}>
-            {{ d.name }}
-          </option>
-        {% endfor %}
-      </select>
-    </div>
+    <input type="date" name="from_date" value="{{ from_date }}">
+    <input type="date" name="to_date" value="{{ to_date }}">
 
-    <div>
-      <label>From</label><br>
-      <input type="date" name="from_date" value="{{ from_date }}">
-    </div>
+    <button type="submit">🔄 Load</button>
 
-    <div>
-      <label>To</label><br>
-      <input type="date" name="to_date" value="{{ to_date }}">
-    </div>
-
-    <div style="align-self: flex-end;">
-      <button type="submit">Load</button>
-    </div>
-  </form>
-
-  <!-- EXPORT FORM -->
-  {% if selected_device and from_date and to_date %}
-  <form method="post" action="{% url 'export_csv' %}" style="margin-top:10px;">
-    {% csrf_token %}
-    
-    <input type="hidden" name="device" value="{{ selected_device }}">
-    <input type="hidden" name="from_date" value="{{ from_date }}">
-    <input type="hidden" name="to_date" value="{{ to_date }}">
-    
-    <input type="hidden" name="table_data" id="tableDataInput">
-    <input type="hidden" name="columns" id="columnsInput">
-
-    <button type="submit" style="background:#4caf50;">
-      ⬇ Download CSV
+    {% if selected_device %}
+    <button type="submit" formaction="{% url 'export_csv' %}" class="btn-green">
+      ⬇ Export CSV
     </button>
+    {% endif %}
   </form>
-  {% endif %}
+
+  <div class="tabs">
+    <button onclick="showTab('flow', this)" class="active">🌊 Flow</button>
+    <button onclick="showTab('weather', this)">🌦 Weather</button>
+    <button onclick="showTab('battery', this)">🔋 Battery</button>
+  </div>
 </div>
 
-<!-- CHART -->
-<div class="card">
-  <canvas id="chart"></canvas>
+<!-- FLOW -->
+<div id="flowTab" class="card">
+  <h3>🌊 Flow Analytics</h3>
+
+  <button onclick="downloadCSV(groups.flow, 'flow')" class="btn-green">
+    ⬇ Download
+  </button>
+
+  <!-- SUB TABS -->
+  <div class="tabs" style="margin-top:10px;">
+    <button onclick="showSubTab('flowChartView', this)" class="active">📈 Chart</button>
+    <button onclick="showSubTab('flowTableView', this)">📋 Table</button>
+  </div>
+
+  <!-- CHART VIEW -->
+  <div id="flowChartView">
+    <div class="stats" id="flowStats"></div>
+    <div class="toggle-btns" id="flowToggles"></div>
+    <canvas id="flowChart"></canvas>
+  </div>
+
+  <!-- TABLE VIEW -->
+  <div id="flowTableView" style="display:none;">
+    <div id="flowTable" class="table-container"></div>
+  </div>
 </div>
 
-<!-- TABLE -->
-<div class="card">
-  <table border="1" width="100%">
-    <tr>
-      {% for col in columns %}
-        <th>{{ col|cut:"SAMBHAV_0035002C_" }}</th>
-      {% endfor %}
-    </tr>
+<!-- WEATHER -->
+<div id="weatherTab" class="card" style="display:none;">
+  <h3>🌦 Weather</h3>
 
-    {% for row in table_data %}
-    <tr>
-      {% for col in columns %}
-        <td>{{ row|get_item:col }}</td>
-      {% endfor %}
-    </tr>
-    {% endfor %}
-  </table>
+  <button onclick="downloadCSV(groups.weather, 'weather')" class="btn-green">
+    ⬇ Download
+  </button>
+
+  <div class="tabs" style="margin-top:10px;">
+    <button onclick="showSubTab('weatherChartView', this)" class="active">📈 Chart</button>
+    <button onclick="showSubTab('weatherTableView', this)">📋 Table</button>
+  </div>
+
+  <div id="weatherChartView">
+    <div class="stats" id="weatherStats"></div>
+    <canvas id="weatherChart"></canvas>
+  </div>
+
+  <div id="weatherTableView" style="display:none;">
+    <div id="weatherTable" class="table-container"></div>
+  </div>
 </div>
 
-<!-- SAFE JSON -->
+<!-- BATTERY -->
+<div id="batteryTab" class="card" style="display:none;">
+  <h3>🔋 Battery</h3>
+
+  <button onclick="downloadCSV(groups.battery, 'battery')" class="btn-green">
+    ⬇ Download
+  </button>
+
+  <div class="tabs" style="margin-top:10px;">
+    <button onclick="showSubTab('batteryChartView', this)" class="active">📈 Chart</button>
+    <button onclick="showSubTab('batteryTableView', this)">📋 Table</button>
+  </div>
+
+  <div id="batteryChartView">
+    <div class="stats" id="batteryStats"></div>
+    <canvas id="batteryChart"></canvas>
+  </div>
+
+  <div id="batteryTableView" style="display:none;">
+    <div id="batteryTable" class="table-container"></div>
+  </div>
+</div>
+
 {{ table_data|json_script:"table-data" }}
 {{ columns|json_script:"columns-data" }}
 
 <script>
-  // ✅ Parse data safely
-  const rawData = JSON.parse(document.getElementById('table-data').textContent);
-  const columns = JSON.parse(document.getElementById('columns-data').textContent);
 
-  console.log("DATA:", rawData);
+  function showSubTab(viewId, el) {
+  const parent = el.closest(".card");
 
-  // ✅ Fill export form safely
-  const tableInput = document.getElementById('tableDataInput');
-  const columnsInput = document.getElementById('columnsInput');
+  // hide all views inside same card
+  parent.querySelectorAll("div[id$='View']").forEach(v => {
+    v.style.display = "none";
+  });
 
-  if (tableInput && columnsInput) {
-    tableInput.value = JSON.stringify(rawData);
-    columnsInput.value = JSON.stringify(columns);
+  // remove active from buttons
+  parent.querySelectorAll(".tabs button").forEach(btn => {
+    btn.classList.remove("active");
+  });
+
+  // show selected
+  document.getElementById(viewId).style.display = "block";
+  el.classList.add("active");
+}
+
+const rawData = JSON.parse(document.getElementById('table-data').textContent);
+const columns = JSON.parse(document.getElementById('columns-data').textContent);
+const labels = rawData.map(r => r.time);
+
+// GROUPING
+const groups = { weather: [], flow: [], battery: [] };
+
+columns.forEach(c => {
+  const l = c.toLowerCase();
+
+  if (
+    l.includes("device") ||
+    l.includes("id") ||
+    l.includes("timestamp") ||
+    l === "time"
+  ) return;
+
+  const pushUnique = (arr, val) => {
+    if (!arr.includes(val)) arr.push(val);
+  };
+
+  if (l.includes("temp") || l.includes("hum") || l.includes("wind") || l.includes("rain") || l.includes("solar")) {
+    pushUnique(groups.weather, c);
   }
+  else if (l.includes("battery") || l.includes("rssi")) {
+    pushUnique(groups.battery, c);
+  }
+  else if (l.includes("cumul") || l.includes("flow") || l.includes("m3") || l.includes("lev")) {
+    pushUnique(groups.flow, c);
+  }
+});
+// SPIKE FILTER
+function clean(val){
+  if(val === null || val === "") return null;
+  val = Number(val);
+  if(val > 10000) return null;
+  return val;
+}
 
-  // ✅ Render chart
-  if (rawData.length > 0) {
-    const labels = rawData.map(r => r.time);
-    const metrics = columns.filter(c => c !== "time");
+// STATS
+function renderStats(metrics, id){
+  const container = document.getElementById(id);
+  container.innerHTML = "";
 
-    const datasets = metrics.map(metric => ({
-      label: metric.split("_").slice(-1)[0],  // clean label
-      data: rawData.map(r => {
-        const val = r[metric];
-        return val === "" || val === null ? null : Number(val);
-      }),
-      borderWidth: 2,
-      tension: 0.3
-    }));
+  const seen = new Set();   // ✅ prevent duplicates
 
-    new Chart(document.getElementById('chart'), {
-      type: 'line',
-      data: { labels, datasets },
-      options: {
-        responsive: true,
-        interaction: {
-          mode: 'index',
-          intersect: false
+  metrics.forEach(m=>{
+    const name = formatName(m);
+
+    if (seen.has(name)) return;   // 🚀 skip duplicate label
+    seen.add(name);
+
+    const vals = rawData.map(r=>clean(r[m])).filter(v=>v!==null);
+    if(!vals.length) return;
+
+    const min = Math.min(...vals);
+    const max = Math.max(...vals);
+    const avg = (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2);
+
+    container.innerHTML += `
+      <div class="stat-box">
+        <div class="stat-title">${name}</div>
+        <div class="stat-line">Min: <b>${min}</b></div>
+        <div class="stat-line">Max: <b>${max}</b></div>
+        <div class="stat-line">Avg: <b>${avg}</b></div>
+      </div>
+    `;
+  });
+}
+
+// CHART
+function createChart(canvasId, metrics){
+  const ctx = document.getElementById(canvasId);
+
+  const seen = new Set();
+
+  const datasets = metrics.filter(m => {
+    const name = formatName(m);
+    if (seen.has(name)) return false;
+    seen.add(name);
+    return true;
+  }).map(m => ({
+    label: formatName(m),
+    data: rawData.map(r=>clean(r[m])),
+    borderWidth: 2,
+    tension: 0.3,
+    yAxisID: m.includes("lev") ? 'y1':'y'
+  }));
+
+  return new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: { options: {
+  responsive: true,
+  maintainAspectRatio: false,
+
+  interaction: {
+    mode: 'index',
+    intersect: false
+  },
+
+  scales: {
+    x: {
+      ticks: { autoSkip: true, maxTicksLimit: 10 }
+    },
+    y: {
+      position: 'left',
+      title: { display: true, text: 'Flow' }
+    },
+    y1: {
+      position: 'right',
+      grid: { drawOnChartArea: false },
+      title: { display: true, text: 'Level' }
+    }
+  },
+
+  plugins: {
+    zoom: {
+      pan: {
+        enabled: true,
+        mode: 'x'
+      },
+      zoom: {
+        wheel: {
+          enabled: true   // scroll zoom
         },
-        plugins: {
-          legend: {
-            position: 'bottom',
-            labels: {
-              boxWidth: 12,
-              font: { size: 10 }
-            }
-          }
-        }
+        pinch: {
+          enabled: true   // mobile pinch zoom
+        },
+        mode: 'x'
       }
-    });
+    }
   }
+}}
+  });
+}
+// TABLE
+function createTable(id, metrics) {
+  if (!metrics.length) return;
+
+  const seen = new Set();
+
+  // ✅ remove duplicate metrics based on display name
+  const uniqueMetrics = metrics.filter(m => {
+    const name = formatName(m);
+    if (seen.has(name)) return false;
+    seen.add(name);
+    return true;
+  });
+
+  let html = `
+  <div style="overflow:auto; max-height:320px; margin-top:10px;">
+    <table style="
+      width:100%;
+      border-collapse:collapse;
+      table-layout:fixed;
+      font-size:13px;
+    ">
+      <thead>
+        <tr style="background:#f1f5fb;">
+          <th style="border:1px solid #ccc; padding:6px;">Time</th>
+  `;
+
+  // ✅ use uniqueMetrics here
+  uniqueMetrics.forEach(m => {
+    html += `<th style="border:1px solid #ccc; padding:6px;">
+      ${formatName(m)}
+    </th>`;
+  });
+
+  html += "</tr></thead><tbody>";
+
+  rawData.forEach((row, i) => {
+
+    const hasData = uniqueMetrics.some(m => clean(row[m]) !== null);
+    if (!hasData) return;
+
+    html += `<tr style="background:${i % 2 === 0 ? '#fff' : '#f9fbff'}">
+      <td style="border:1px solid #ddd; padding:6px;">
+        ${new Date(row.time).toLocaleString()}
+      </td>`;
+
+    // ✅ use uniqueMetrics here
+    uniqueMetrics.forEach(m => {
+      const val = clean(row[m]);
+      html += `<td style="border:1px solid #ddd; padding:6px;">
+        ${val !== null ? val : "-"}
+      </td>`;
+    });
+
+    html += "</tr>";
+  });
+
+  html += "</tbody></table></div>";
+
+  document.getElementById(id).innerHTML = html;
+}
+// TOGGLE
+function createToggles(chart, metrics, id){
+  const container = document.getElementById(id);
+  metrics.forEach((m,i)=>{
+    const btn = document.createElement("button");
+    btn.innerText = formatName(m);
+
+    btn.onclick = ()=>{
+      chart.data.datasets[i].hidden = !chart.data.datasets[i].hidden;
+      chart.update();
+    };
+
+    container.appendChild(btn);
+  });
+}
+function extractDeviceFromKey(key) {
+  const match = key.match(/^(SAMBHAV_[^_]+)/);
+  return match ? match[1] : key;
+}
+
+function getDeviceFromColumns() {
+  const metric = columns.find(c =>
+    c !== "time" &&
+    !c.toLowerCase().includes("device") &&
+    !c.toLowerCase().includes("timestamp")
+  );
+
+  return metric ? extractDeviceFromKey(metric) : "Unknown Device";
+}
+
+const deviceName = getDeviceFromColumns();
+
+document.querySelector("#flowTab h3").innerText =
+  "🌊 Flow - " + deviceName;
+
+document.querySelector("#weatherTab h3").innerText =
+  "🌦 Weather - " + deviceName;
+
+document.querySelector("#batteryTab h3").innerText =
+  "🔋 Battery - " + deviceName;
+
+// INIT
+const flowChart = createChart("flowChart", groups.flow);
+createToggles(flowChart, groups.flow, "flowToggles");
+
+createChart("weatherChart", groups.weather);
+createChart("batteryChart", groups.battery);
+
+renderStats(groups.flow, "flowStats");
+renderStats(groups.weather, "weatherStats");
+renderStats(groups.battery, "batteryStats");
+
+// TABS
+function showTab(tab, el){
+  ['flow','weather','battery'].forEach(t=>{
+    document.getElementById(t+"Tab").style.display = "none";
+  });
+
+  document.getElementById(tab+"Tab").style.display = "block";
+
+  document.querySelectorAll(".tabs button").forEach(b=>b.classList.remove("active"));
+  if(el) el.classList.add("active");
+}
+createTable("flowTable", groups.flow);
+createTable("weatherTable", groups.weather);
+createTable("batteryTable", groups.battery);
+
+function downloadCSV(metrics, filenameBase) {
+  if (!metrics.length) return;
+
+  // 📅 add date range to filename
+  const from = document.querySelector("input[name='from_date']").value || "";
+  const to = document.querySelector("input[name='to_date']").value || "";
+
+  const fileName = `${filenameBase}_${from}_to_${to}.csv`;
+
+  let csv = "Time," + metrics.map(formatName).join(",") + "\n";
+
+  rawData.forEach(row => {
+    const hasData = metrics.some(m => clean(row[m]) !== null);
+    if (!hasData) return;
+
+    let line = [new Date(row.time).toLocaleString()];
+
+    metrics.forEach(m => {
+      const val = clean(row[m]);
+      line.push(val !== null ? val : "");
+    });
+
+    csv += line.join(",") + "\n";
+  });
+
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  a.click();
+
+  URL.revokeObjectURL(url);
+}
+function getDeviceName() {
+  const select = document.querySelector("select[name='device']");
+  return select.options[select.selectedIndex].text.trim();
+}
+
+function formatName(metric) {
+  const m = metric.toLowerCase();
+
+  if (m.includes("hum")) return "Humidity (%)";
+  if (m.includes("temp")) return "Temperature (°C)";
+  if (m.includes("battery")) return "Battery Level (%)";
+  if (m.includes("rssi")) return "Signal Strength (RSSI)";
+  if (m.includes("cumul") || m.includes("m3")) return "Water Flow (m³)";
+  if (m.includes("lev")) return "Water Level";
+  if (m.includes("rain")) return "Rainfall";
+  if (m.includes("wind")) return "Wind Speed";
+  if (m.includes("solar")) return "Solar Radiation";
+
+  return metric.split("_").pop();
+}
 </script>
 
 </body>
