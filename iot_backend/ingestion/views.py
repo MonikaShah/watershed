@@ -7,7 +7,8 @@ import requests
 import pandas as pd
 from django.http import HttpResponse
 from django.shortcuts import render
-from .models import Device
+from .models import Device, DeviceMetadata
+
 # from .utils import fetch_device_data
 
 TB_URL = "https://watershed.mahamaps.com"
@@ -67,101 +68,335 @@ def get_tb_devices(token):
     return r.json()["data"]
 
 
+# def get_telemetry(token, device_id, start_ts, end_ts):
+#     # first get available keys
+#     keys_url = f"{TB_URL}/api/plugins/telemetry/DEVICE/{device_id}/keys/timeseries"
+
+#     headers = {
+#         "X-Authorization": f"Bearer {token}"
+#     }
+
+#     keys_resp = requests.get(keys_url, headers=headers)
+#     keys_resp.raise_for_status()
+
+#     keys = keys_resp.json()
+
+#     # if not keys:
+#     #     return pd.DataFrame()
+#     if not keys:
+#         print("⚠️ No keys found, using fallback keys")
+#         keys = ["temperature", "humidity", "battery"]  # adjust based on your device
+
+#     keys_str = ",".join(keys)
+
+#     data_url = (
+#         f"{TB_URL}/api/plugins/telemetry/DEVICE/{device_id}/values/timeseries"
+#         f"?keys={keys_str}"
+#         f"&startTs={start_ts}"
+#         f"&endTs={end_ts}"
+#         f"&limit=50000"
+#     )
+
+#     r = requests.get(data_url, headers=headers)
+#     r.raise_for_status()
+
+#     data = r.json()
+
+#     rows = []
+
+#     for key, values in data.items():
+#         for item in values:
+#             value = item["value"]
+
+#             try:
+#                 parsed = json.loads(value)
+
+#                 if isinstance(parsed, dict):
+#                     for subk, subv in parsed.items():
+#                         rows.append({
+#                             "time": pd.to_datetime(item["ts"], unit="ms"),
+#                             "key": f"{key}_{subk}",
+#                             "value": subv
+#                         })
+#                 else:
+#                     rows.append({
+#                         "time": pd.to_datetime(item["ts"], unit="ms"),
+#                         "key": key,
+#                         "value": value
+#                     })
+#             except:
+#                 rows.append({
+#                     "time": pd.to_datetime(item["ts"], unit="ms"),
+#                     "key": key,
+#                     "value": value
+#                 })
+
+#     if not rows:
+#         return pd.DataFrame()
+
+#     df = pd.DataFrame(rows)
+
+#     pivot_df = df.pivot_table(
+#         index="time",
+#         columns="key",
+#         values="value",
+#         aggfunc="first"
+#     ).reset_index()
+
+#     print("DEVICE:", device_id)
+#     print("KEYS:", keys)
+#     print("START:", start_ts, "END:", end_ts)
+#     # print("RAW DATA:", data)
+
+#     print("\n====== DASHBOARD DEBUG ======")
+#     print("DEVICE:", device_id)
+#     print("FROM:", start_ts, "TO:", end_ts  )
+
+#     print("DF EMPTY?", df.empty)
+#     print("DF SHAPE:", df.shape)
+
+#     if not df.empty:
+#         print("COLUMNS:", df.columns.tolist())
+#         print(df.head())
+#     else:
+#         print("⚠️ DataFrame is EMPTY")
+#     return pivot_df
+
 def get_telemetry(token, device_id, start_ts, end_ts):
-    # first get available keys
-    keys_url = f"{TB_URL}/api/plugins/telemetry/DEVICE/{device_id}/keys/timeseries"
+
+    import json
+    import pandas as pd
+    import requests
+
+    # =========================================
+    # GET AVAILABLE KEYS
+    # =========================================
+
+    keys_url = (
+        f"{TB_URL}/api/plugins/telemetry/DEVICE/"
+        f"{device_id}/keys/timeseries"
+    )
 
     headers = {
         "X-Authorization": f"Bearer {token}"
     }
 
-    keys_resp = requests.get(keys_url, headers=headers)
+    keys_resp = requests.get(
+        keys_url,
+        headers=headers
+    )
+
     keys_resp.raise_for_status()
 
     keys = keys_resp.json()
 
-    # if not keys:
-    #     return pd.DataFrame()
+    # fallback
     if not keys:
-        print("⚠️ No keys found, using fallback keys")
-        keys = ["temperature", "humidity", "battery"]  # adjust based on your device
+
+        print("⚠️ No keys found, using fallback")
+
+        keys = [
+            "temperature",
+            "humidity",
+            "battery"
+        ]
 
     keys_str = ",".join(keys)
 
+    # =========================================
+    # FETCH TELEMETRY
+    # =========================================
+
     data_url = (
-        f"{TB_URL}/api/plugins/telemetry/DEVICE/{device_id}/values/timeseries"
+
+        f"{TB_URL}/api/plugins/telemetry/DEVICE/"
+        f"{device_id}/values/timeseries"
+
         f"?keys={keys_str}"
+
         f"&startTs={start_ts}"
+
         f"&endTs={end_ts}"
+
         f"&limit=50000"
+
     )
 
-    r = requests.get(data_url, headers=headers)
+    r = requests.get(
+        data_url,
+        headers=headers
+    )
+
     r.raise_for_status()
 
     data = r.json()
 
+    # =========================================
+    # PROCESS TELEMETRY
+    # =========================================
+
     rows = []
 
     for key, values in data.items():
+
         for item in values:
+
+            ts = pd.to_datetime(
+                item["ts"],
+                unit="ms"
+            )
+
             value = item["value"]
 
             try:
+
                 parsed = json.loads(value)
 
+                # =================================
+                # IF JSON OBJECT
+                # =================================
+
                 if isinstance(parsed, dict):
+
+                    # LOOP FIRST LEVEL
                     for subk, subv in parsed.items():
-                        rows.append({
-                            "time": pd.to_datetime(item["ts"], unit="ms"),
-                            "key": f"{key}_{subk}",
-                            "value": subv
-                        })
+
+                        # =============================
+                        # IF NESTED OBJECT
+                        # =============================
+
+                        if isinstance(subv, dict):
+
+                            for nested_k, nested_v in subv.items():
+
+                                # Example:
+                                # json_Tw
+                                # json_RHw
+                                # json_BP
+
+                                rows.append({
+
+                                    "time": ts,
+
+                                    "key":
+                                        f"{key}_{nested_k}",
+
+                                    "value":
+                                        nested_v
+
+                                })
+
+                        else:
+
+                            # Example:
+                            # json_rssi
+                            # json_battery_Volt
+
+                            rows.append({
+
+                                "time": ts,
+
+                                "key":
+                                    f"{key}_{subk}",
+
+                                "value":
+                                    subv
+
+                            })
+
                 else:
+
                     rows.append({
-                        "time": pd.to_datetime(item["ts"], unit="ms"),
+
+                        "time": ts,
+
                         "key": key,
-                        "value": value
+
+                        "value": parsed
+
                     })
+
             except:
+
                 rows.append({
-                    "time": pd.to_datetime(item["ts"], unit="ms"),
+
+                    "time": ts,
+
                     "key": key,
+
                     "value": value
+
                 })
 
+    # =========================================
+    # EMPTY CHECK
+    # =========================================
+
     if not rows:
+
+        print("⚠️ No telemetry rows")
+
         return pd.DataFrame()
+
+    # =========================================
+    # CREATE DATAFRAME
+    # =========================================
 
     df = pd.DataFrame(rows)
 
+    # =========================================
+    # PIVOT TABLE
+    # =========================================
+
     pivot_df = df.pivot_table(
+
         index="time",
+
         columns="key",
+
         values="value",
+
         aggfunc="first"
+
     ).reset_index()
 
+    # =========================================
+    # DEBUG
+    # =========================================
+
+    print("\n========== DASHBOARD DEBUG ==========")
+
     print("DEVICE:", device_id)
+
+    print("START:", start_ts)
+
+    print("END:", end_ts)
+
     print("KEYS:", keys)
-    print("START:", start_ts, "END:", end_ts)
-    print("RAW DATA:", data)
 
-    print("\n====== DASHBOARD DEBUG ======")
-    print("DEVICE:", device_id)
-    print("FROM:", start_ts, "TO:", end_ts  )
+    print("ROWS:", len(rows))
 
-    print("DF EMPTY?", df.empty)
-    print("DF SHAPE:", df.shape)
+    print("DF EMPTY?", pivot_df.empty)
 
-    if not df.empty:
-        print("COLUMNS:", df.columns.tolist())
-        print(df.head())
+    print("DF SHAPE:", pivot_df.shape)
+
+    print("COLUMNS:")
+
+    print(pivot_df.columns.tolist())
+
+    if not pivot_df.empty:
+
+        print("\nHEAD:")
+
+        print(pivot_df.head())
+
     else:
-        print("⚠️ DataFrame is EMPTY")
+
+        print("⚠️ EMPTY DATAFRAME")
+
+    print("=====================================\n")
+
     return pivot_df
-
-
 # ----------------------------
 # Dashboard page
 # ----------------------------
@@ -176,6 +411,8 @@ def dashboard(request):
     device_id = request.GET.get("device")
     from_date = request.GET.get("from_date")
     to_date = request.GET.get("to_date")
+
+    device_meta = DeviceMetadata.objects.all()
 
     if device_id and from_date and to_date:
         # start_ts = int(pd.Timestamp(from_date).timestamp() * 1000)
@@ -196,10 +433,28 @@ def dashboard(request):
             # format nicely
             df["time"] = df["time"].dt.strftime("%d-%b-%Y %I:%M %p")
             table_data = df.to_dict(orient="records")
+    device_map = {}
 
+    for d in device_meta:
+
+        device_map[d.device_id] = {
+
+            "village": d.village,
+
+            "district": d.district,
+
+            "category": d.category,
+
+            "lat": d.latitude,
+
+            "lon": d.longitude,
+
+            "name": d.device_name
+
+        }
     return render(
         request,
-        "ingestion/dashboard.html",
+        "ingestion/dashboard_v5.html",
         {
             "devices": devices,
             "table_data": table_data,
@@ -207,6 +462,7 @@ def dashboard(request):
             "selected_device": device_id,
             "from_date": from_date,
             "to_date": to_date,
+            "device_map": device_map
         }
     )
 
