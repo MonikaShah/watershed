@@ -385,7 +385,7 @@ def get_telemetry(
 # Dashboard page
 # ----------------------------
 # @api_view(['GET'])
-def dashboard(request):
+def dashboard_v5(request):
 
     token = get_tb_token()
 
