@@ -161,56 +161,80 @@ def get_tb_devices(token):
 #     else:
 #         print("⚠️ DataFrame is EMPTY")
 #     return pivot_df
+# =========================================
+# FLATTEN NESTED JSON
+# =========================================
 
-def get_telemetry(token, device_id, start_ts, end_ts):
+def flatten_json(data, parent_key=""):
 
-    import json
-    import pandas as pd
-    import requests
+    items = {}
 
-    # =========================================
-    # GET AVAILABLE KEYS
-    # =========================================
+    for k, v in data.items():
 
-    keys_url = (
-        f"{TB_URL}/api/plugins/telemetry/DEVICE/"
-        f"{device_id}/keys/timeseries"
-    )
+        new_key = f"{parent_key}_{k}" if parent_key else k
+
+        if isinstance(v, dict):
+
+            items.update(
+                flatten_json(v, new_key)
+            )
+
+        else:
+
+            items[new_key] = v
+
+    return items
+
+# =========================================
+# GET TELEMETRY
+# =========================================
+
+def get_telemetry(
+    token,
+    tb_device_id,
+    selected_device,
+    start_ts,
+    end_ts
+):
 
     headers = {
         "X-Authorization": f"Bearer {token}"
     }
 
-    keys_resp = requests.get(
+    # =====================================
+    # GET KEYS
+    # =====================================
+
+    keys_url = (
+
+        f"{TB_URL}/api/plugins/telemetry/DEVICE/"
+        f"{tb_device_id}/keys/timeseries"
+
+    )
+
+    r = requests.get(
         keys_url,
         headers=headers
     )
 
-    keys_resp.raise_for_status()
+    r.raise_for_status()
 
-    keys = keys_resp.json()
+    keys = r.json()
 
-    # fallback
     if not keys:
 
-        print("⚠️ No keys found, using fallback")
-
-        keys = [
-            "temperature",
-            "humidity",
-            "battery"
-        ]
+        return pd.DataFrame()
 
     keys_str = ",".join(keys)
 
-    # =========================================
-    # FETCH TELEMETRY
-    # =========================================
+    # =====================================
+    # GET DATA
+    # =====================================
 
     data_url = (
 
         f"{TB_URL}/api/plugins/telemetry/DEVICE/"
-        f"{device_id}/values/timeseries"
+        f"{tb_device_id}/values/timeseries"
 
         f"?keys={keys_str}"
 
@@ -231,208 +255,255 @@ def get_telemetry(token, device_id, start_ts, end_ts):
 
     data = r.json()
 
-    # =========================================
-    # PROCESS TELEMETRY
-    # =========================================
-
     rows = []
 
-    for key, values in data.items():
+    # =====================================
+    # LOOP TB KEYS
+    # =====================================
+
+    for tb_key, values in data.items():
 
         for item in values:
 
-            ts = pd.to_datetime(
-                item["ts"],
-                unit="ms"
-            )
-
-            value = item["value"]
-
             try:
 
-                parsed = json.loads(value)
+                ts = pd.to_datetime(
+                    item["ts"],
+                    unit="ms"
+                )
+
+                raw_value = item["value"]
+
+                parsed = json.loads(raw_value)
+
+                if not isinstance(parsed, dict):
+                    continue
 
                 # =================================
-                # IF JSON OBJECT
+                # FILTER DEVICE
                 # =================================
 
-                if isinstance(parsed, dict):
+                device_name = parsed.get("Device_ID", "")
 
-                    # LOOP FIRST LEVEL
-                    for subk, subv in parsed.items():
+                # REMOVE PREFIX
+                clean_device = (
+                    device_name
+                    .replace("SAMBHAV_", "")
+                    .strip()
+                )
 
-                        # =============================
-                        # IF NESTED OBJECT
-                        # =============================
+                selected_clean = (
+                    selected_device
+                    .replace("SAMBHAV_", "")
+                    .strip()
+                )
 
-                        if isinstance(subv, dict):
+                if clean_device != selected_clean:
+                    continue
 
-                            for nested_k, nested_v in subv.items():
+                # =================================
+                # FLATTEN JSON
+                # =================================
 
-                                # Example:
-                                # json_Tw
-                                # json_RHw
-                                # json_BP
+                flat = flatten_json(parsed)
 
-                                rows.append({
+                # =================================
+                # REMOVE META
+                # =================================
 
-                                    "time": ts,
+                flat.pop("timestamp", None)
+                flat.pop("Device_ID", None)
 
-                                    "key":
-                                        f"{key}_{nested_k}",
+                # =================================
+                # STORE
+                # =================================
 
-                                    "value":
-                                        nested_v
-
-                                })
-
-                        else:
-
-                            # Example:
-                            # json_rssi
-                            # json_battery_Volt
-
-                            rows.append({
-
-                                "time": ts,
-
-                                "key":
-                                    f"{key}_{subk}",
-
-                                "value":
-                                    subv
-
-                            })
-
-                else:
-
-                    rows.append({
-
-                        "time": ts,
-
-                        "key": key,
-
-                        "value": parsed
-
-                    })
-
-            except:
-
-                rows.append({
-
+                row = {
                     "time": ts,
+                    "device_id": device_name
+                }
 
-                    "key": key,
+                row.update(flat)
 
-                    "value": value
+                rows.append(row)
 
-                })
+            except Exception as e:
 
-    # =========================================
-    # EMPTY CHECK
-    # =========================================
+                print("PARSE ERROR:", e)
+
+    # =====================================
+    # EMPTY
+    # =====================================
 
     if not rows:
 
-        print("⚠️ No telemetry rows")
+        print("NO ROWS FOUND")
 
         return pd.DataFrame()
 
-    # =========================================
-    # CREATE DATAFRAME
-    # =========================================
+    # =====================================
+    # DATAFRAME
+    # =====================================
 
     df = pd.DataFrame(rows)
 
-    # =========================================
-    # PIVOT TABLE
-    # =========================================
+    # =====================================
+    # REMOVE DUPLICATES
+    # =====================================
 
-    pivot_df = df.pivot_table(
+    df = df.groupby("time").first().reset_index()
 
-        index="time",
+    # =====================================
+    # FORMAT TIME
+    # =====================================
 
-        columns="key",
+    df["time"] = pd.to_datetime(
+        df["time"],
+        utc=True
+    )
 
-        values="value",
+    df["time"] = (
 
-        aggfunc="first"
+        df["time"]
+        .dt.tz_convert("Asia/Kolkata")
 
-    ).reset_index()
+    )
 
-    # =========================================
-    # DEBUG
-    # =========================================
+    df["time"] = (
 
-    print("\n========== DASHBOARD DEBUG ==========")
+        df["time"]
+        .dt.strftime(
+            "%d-%b-%Y %I:%M %p"
+        )
 
-    print("DEVICE:", device_id)
+    )
 
-    print("START:", start_ts)
+    print(df.head())
 
-    print("END:", end_ts)
-
-    print("KEYS:", keys)
-
-    print("ROWS:", len(rows))
-
-    print("DF EMPTY?", pivot_df.empty)
-
-    print("DF SHAPE:", pivot_df.shape)
-
-    print("COLUMNS:")
-
-    print(pivot_df.columns.tolist())
-
-    if not pivot_df.empty:
-
-        print("\nHEAD:")
-
-        print(pivot_df.head())
-
-    else:
-
-        print("⚠️ EMPTY DATAFRAME")
-
-    print("=====================================\n")
-
-    return pivot_df
+    return df
 # ----------------------------
 # Dashboard page
 # ----------------------------
 # @api_view(['GET'])
 def dashboard(request):
+
     token = get_tb_token()
+
     devices = get_tb_devices(token)
+
+    # DEBUG
+    print("\n========= TB DEVICES =========")
+
+    for d in devices:
+        print(d["name"])
+
+    print("==============================\n")
 
     table_data = []
     columns = []
 
-    device_id = request.GET.get("device")
+    selected_device = request.GET.get("device")
     from_date = request.GET.get("from_date")
     to_date = request.GET.get("to_date")
 
     device_meta = DeviceMetadata.objects.all()
 
-    if device_id and from_date and to_date:
-        # start_ts = int(pd.Timestamp(from_date).timestamp() * 1000)
-        # end_ts = int(pd.Timestamp(to_date).timestamp() * 1000)
-        start_ts = int(pd.Timestamp(from_date).tz_localize('Asia/Kolkata').timestamp() * 1000)
-        end_ts = int((pd.Timestamp(to_date) + pd.Timedelta(days=1)).tz_localize('Asia/Kolkata').timestamp() * 1000)
-        
-        df = get_telemetry(token, device_id, start_ts, end_ts)
+    # =====================================
+    # FIND THINGSBOARD MAIN DEVICE
+    # =====================================
+
+    tb_device_id = None
+
+    for d in devices:
+
+        name = d.get("name", "")
+
+        print("CHECKING DEVICE:", name)
+
+        # IMPORTANT
+        # Use CONTAINS instead of exact match
+
+        if "SAMBHAV" in name.upper():
+
+            tb_device_id = d["id"]["id"]
+
+            print("FOUND TB DEVICE:", tb_device_id)
+
+            break
+
+    # =====================================
+    # FETCH DATA
+    # =====================================
+
+    if (
+        tb_device_id
+        and
+        selected_device
+        and
+        from_date
+        and
+        to_date
+    ):
+
+        start_ts = int(
+
+            pd.Timestamp(from_date)
+            .tz_localize("Asia/Kolkata")
+            .timestamp() * 1000
+
+        )
+
+        end_ts = int(
+
+            (
+                pd.Timestamp(to_date)
+                + pd.Timedelta(days=1)
+            )
+            .tz_localize("Asia/Kolkata")
+            .timestamp() * 1000
+
+        )
+
+        print("SELECTED DEVICE:", selected_device)
+
+        df = get_telemetry(
+
+            token=token,
+
+            tb_device_id=tb_device_id,
+
+            selected_device=selected_device,
+
+            start_ts=start_ts,
+
+            end_ts=end_ts
+
+        )
 
         if not df.empty:
+
             df = df.fillna("")
+
             columns = df.columns.tolist()
-            df["time"] = pd.to_datetime(df["time"], errors="coerce")
 
-            # convert UTC → IST
-            df["time"] = df["time"].dt.tz_localize("UTC").dt.tz_convert("Asia/Kolkata")
+            table_data = df.to_dict(
+                orient="records"
+            )
 
-            # format nicely
-            df["time"] = df["time"].dt.strftime("%d-%b-%Y %I:%M %p")
-            table_data = df.to_dict(orient="records")
+            print("ROWS:", len(table_data))
+
+        else:
+
+            print("EMPTY DF")
+
+    else:
+
+        print("TB DEVICE NOT FOUND")
+
+    # =====================================
+    # DEVICE MAP
+    # =====================================
+
     device_map = {}
 
     for d in device_meta:
@@ -452,18 +523,31 @@ def dashboard(request):
             "name": d.device_name
 
         }
+
     return render(
+
         request,
+
         "ingestion/dashboard_v5.html",
+
         {
+
             "devices": devices,
+
             "table_data": table_data,
+
             "columns": columns,
-            "selected_device": device_id,
+
+            "selected_device": selected_device,
+
             "from_date": from_date,
+
             "to_date": to_date,
+
             "device_map": device_map
+
         }
+
     )
 
 # def db_tables(request):
@@ -536,10 +620,66 @@ def export_csv(request):
             df["time"] = df["time"].dt.strftime("%d-%b-%Y %I:%M %p")
 
         device = request.POST.get("device", "device")
-        from_date = request.POST.get("from_date", "")
-        to_date = request.POST.get("to_date", "")
 
-        filename = f"{device}_{from_date}_to_{to_date}.csv"
+        device_name = request.POST.get(
+            "device_name",
+            "device"
+        )
+
+        category = request.POST.get(
+            "category",
+            "category"
+        )
+
+        village = request.POST.get(
+            "village",
+            "village"
+        )
+
+        from_date = request.POST.get(
+            "from_date",
+            ""
+        )
+
+        to_date = request.POST.get(
+            "to_date",
+            ""
+        )
+
+        # ====================================
+        # CLEAN FILE NAME
+        # ====================================
+
+        safe_device = (
+            device_name
+            .replace(" ", "_")
+        )
+
+        safe_village = (
+            village
+            .replace(" ", "_")
+        )
+
+        safe_category = (
+            category
+            .replace(" ", "_")
+        )
+
+        filename = (
+
+            f"{safe_category}"
+
+            f"_{safe_village}"
+
+            f"_{safe_device}"
+
+            f"_{device}"
+
+            f"_{from_date}"
+
+            f"_to_{to_date}.csv"
+
+        )
 
         response = HttpResponse(content_type="text/csv")
         response["Content-Disposition"] = f'attachment; filename="{filename}"'

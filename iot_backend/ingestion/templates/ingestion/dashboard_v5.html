@@ -211,22 +211,38 @@ To Date
 
 <div>
 
-<button onclick="render()">
+<button type="button"
+        onclick="loadDashboard()">
+
 Load
+
 </button>
 
 </div>
 
-<!-- VIEW BUTTONS -->
+<!-- VIEW -->
 
 <div>
 
-<button onclick="showView('chart')">
+<button type="button"
+        onclick="showView('chart')">
+
 📈 Chart
+
 </button>
 
-<button onclick="showView('table')">
+<button type="button"
+        onclick="showView('table')">
+
 📋 Table
+
+</button>
+
+<button type="button"
+        onclick="downloadCSV()">
+
+⬇ Download CSV
+
 </button>
 
 </div>
@@ -263,37 +279,60 @@ Analytics
 
 <script>
 
-// ======================================
-// LOAD DATA
-// ======================================
+// =====================================
+// DATA
+// =====================================
 
 const rawData = JSON.parse(
-    document.getElementById("table-data").textContent
+    document.getElementById(
+        "table-data"
+    ).textContent
 );
 
 const deviceMap = JSON.parse(
-    document.getElementById("device-map").textContent
+    document.getElementById(
+        "device-map"
+    ).textContent
 );
 
 console.log("RAW DATA:", rawData);
 console.log("DEVICE MAP:", deviceMap);
 
-// ======================================
+// =====================================
 // ELEMENTS
-// ======================================
+// =====================================
 
 const categorySelect =
-    document.getElementById("categorySelect");
+    document.getElementById(
+        "categorySelect"
+    );
 
 const villageSelect =
-    document.getElementById("villageSelect");
+    document.getElementById(
+        "villageSelect"
+    );
 
 const deviceSelect =
-    document.getElementById("deviceSelect");
+    document.getElementById(
+        "deviceSelect"
+    );
 
-// ======================================
+// =====================================
+// DJANGO VALUES
+// =====================================
+
+const selectedDevice =
+    "{{ selected_device|default:'' }}";
+
+const selectedFrom =
+    "{{ from_date|default:'' }}";
+
+const selectedTo =
+    "{{ to_date|default:'' }}";
+
+// =====================================
 // LOAD VILLAGES
-// ======================================
+// =====================================
 
 function loadVillages(){
 
@@ -305,17 +344,39 @@ function loadVillages(){
         -- Select Village --
         </option>`;
 
+    if(!category)
+        return;
+
     const villages = new Set();
 
     Object.entries(deviceMap).forEach(
 
         ([device, meta])=>{
 
-            if(meta.category === category){
+            const metaCategory = String(
+                meta.category || ""
+            )
+            .trim()
+            .toLowerCase();
 
-                villages.add(
-                    meta.village
-                );
+            const selectedCategory = String(
+                category || ""
+            )
+            .trim()
+            .toLowerCase();
+
+            if(
+                metaCategory ===
+                selectedCategory
+            ){
+
+                if(meta.village){
+
+                    villages.add(
+                        meta.village
+                    );
+
+                }
 
             }
 
@@ -328,21 +389,25 @@ function loadVillages(){
     .forEach(v=>{
 
         const opt =
-            document.createElement("option");
+            document.createElement(
+                "option"
+            );
 
         opt.value = v;
 
         opt.textContent = v;
 
-        villageSelect.appendChild(opt);
+        villageSelect.appendChild(
+            opt
+        );
 
     });
 
 }
 
-// ======================================
+// =====================================
 // LOAD DEVICES
-// ======================================
+// =====================================
 
 function loadDevices(){
 
@@ -361,36 +426,57 @@ function loadDevices(){
 
         ([deviceKey, meta])=>{
 
+            const metaCategory = String(
+                meta.category || ""
+            )
+            .trim()
+            .toLowerCase();
+
+            const selectedCategory = String(
+                category || ""
+            )
+            .trim()
+            .toLowerCase();
+
+            const metaVillage = String(
+                meta.village || ""
+            )
+            .trim()
+            .toLowerCase();
+
+            const selectedVillage = String(
+                village || ""
+            )
+            .trim()
+            .toLowerCase();
+
             if(
 
-                meta.category === category
+                metaCategory ===
+                selectedCategory
 
                 &&
 
-                meta.village === village
+                metaVillage ===
+                selectedVillage
 
             ){
 
                 const opt =
-                    document.createElement("option");
-
-                // FULL DEVICE ID
-                opt.value = deviceKey;
-
-                // REMOVE SAMBHAV_ ONLY FOR DISPLAY
-                const shortId =
-                    deviceKey.replace(
-                        "SAMBHAV_",
-                        ""
+                    document.createElement(
+                        "option"
                     );
 
-                const deviceName =
-                    meta.name || shortId;
+                opt.value =
+                    deviceKey;
 
                 opt.textContent =
-                    `${deviceName} (${shortId})`;
+                    meta.name ||
+                    deviceKey;
 
-                deviceSelect.appendChild(opt);
+                deviceSelect.appendChild(
+                    opt
+                );
 
             }
 
@@ -400,391 +486,267 @@ function loadDevices(){
 
 }
 
-// ======================================
+// =====================================
 // CLEAN LABEL
-// ======================================
+// =====================================
+
+// =====================================
+// NORMALIZED LABELS
+// =====================================
 
 function cleanLabel(label){
 
-    // remove SAMBHAV ids
-    label = label.replace(
-        /SAMBHAV_[A-Z0-9]+_/gi,
-        ""
-    );
+    // convert to lowercase for matching
+    const l = label.toLowerCase();
 
-    // remove short ids like 003C0006_
-    label = label.replace(
-        /^[A-Z0-9]+_/gi,
-        ""
-    );
+    // =================================
+    // WEATHER STATION
+    // =================================
 
-    // remove telemetry prefixes
-    label = label.replace(
-        /json_weather_/gi,
-        ""
-    );
+    if(l === "tw")
+        return "Temperature (°C)";
 
-    label = label.replace(
-        /json_/gi,
-        ""
-    );
+    if(l === "rhw")
+        return "Relative Humidity (%)";
 
-    label = label.replace(
-        /telemetry_/gi,
-        ""
-    );
+    if(l === "bp")
+        return "Barometric Pressure (hPa)";
 
-    label = label.replace(
-        /weather_/gi,
-        ""
-    );
+    if(l === "rf")
+        return "Rainfall (mm)";
 
-    // friendly names
+    if(l === "ws")
+        return "Wind Speed (m/s)";
 
-    const mapping = {
+    if(l === "wd")
+        return "Wind Direction (°)";
 
-        "battery_Volt" : "Battery Voltage",
-        "battery"      : "Battery",
+    if(l === "sr")
+        return "Solar Radiation (W/m²)";
 
-        "rssi"         : "RSSI",
+    // =================================
+    // BATTERY + SIGNAL
+    // =================================
 
-        "Tw"           : "Temperature",
-        "RHw"          : "Humidity",
-        "BP"           : "Pressure",
+    if(
+        l.includes("battery") &&
+        l.includes("volt")
+    ){
+        return "Battery Voltage (V)";
+    }
 
-        "RF"           : "Rainfall",
+    if(l.includes("battery")){
+        return "Battery Level";
+    }
 
-        "WS"           : "Wind Speed",
+    if(l.includes("rssi")){
+        return "Signal Strength (RSSI)";
+    }
 
-        "WD"           : "Wind Direction",
+    // =================================
+    // WATER LEVEL
+    // =================================
 
-        "SR"           : "Solar Radiation",
+    if(
+        l.includes("water") &&
+        l.includes("lev")
+    ){
+        return "Water Level (m)";
+    }
 
-        "water_lev_mt" : "Water Level",
+    if(l.includes("depth")){
+        return "Water Depth (m)";
+    }
 
-        "flow"         : "Flow",
+    if(l.includes("stage")){
+        return "Water Stage";
+    }
 
-        "flow_rate"    : "Flow Rate",
+    if(l.includes("height")){
+        return "Water Height";
+    }
 
-        "totalizer"    : "Totalizer",
+    // =================================
+    // FLOW METER
+    // =================================
 
-        "cumulative"   : "Cumulative Flow",
+    if(l.includes("flow_rate")){
+        return "Flow Rate";
+    }
 
-        "depth"        : "Depth",
+    if(l.includes("flow")){
+        return "Flow";
+    }
 
-        "height"       : "Height",
+    if(l.includes("totalizer")){
+        return "Totalizer";
+    }
 
-        "stage"        : "Stage"
+    if(
+        l.includes("cuml") ||
+        l.includes("cumulative")
+    ){
+        return "Cumulative Flow (m³)";
+    }
 
-    };
+    // =================================
+    // DEFAULT CLEANUP
+    // =================================
 
-    return mapping[label] || label;
+    return label
+
+        .replaceAll("_", " ")
+
+        .replace(/\bjson\b/gi, "")
+
+        .replace(/\bweather\b/gi, "")
+
+        .replace(/\btelemetry\b/gi, "")
+
+        .replace(/\s+/g, " ")
+
+        .trim();
 
 }
 
-// ======================================
+// =====================================
 // CLEAN VALUE
-// ======================================
+// =====================================
 
 function clean(v){
 
     if(v===null || v==="")
         return null;
 
-    v = Number(v);
+    const n = Number(v);
 
-    if(isNaN(v))
-        return null;
-
-    return v;
-
-}
-
-// ======================================
-// TIME
-// ======================================
-
-function parseTime(t){
-
-    return new Date(t);
+    return isNaN(n)
+        ? null
+        : n;
 
 }
 
-// ======================================
-// GET METRICS
-// ======================================
-
-// ======================================
+// =====================================
 // METRICS
-// ======================================
+// =====================================
 
-function getMetrics(device, type){
+function getMetrics(){
 
     if(!rawData.length)
         return [];
 
-    // remove SAMBHAV_ prefix
-    const shortDevice =
-        device.replace("SAMBHAV_", "")
-              .toLowerCase();
+    return Object.keys(
+        rawData[0]
+    ).filter(k=>{
 
-    return Object.keys(rawData[0]).filter(k=>{
-
-        if(k === "time")
-            return false;
-
-        const l = k.toLowerCase();
-
-        // =====================================
-        // IMPORTANT:
-        // ONLY CURRENT DEVICE METRICS
-        // =====================================
-
-        if(
-            !l.includes(shortDevice)
-        ){
-            return false;
-        }
-
-        // ====================================
-        // FLOW METER
-        // ====================================
-
-        if(type === "flow_meter"){
-
-            return (
-
-                l.includes("flow") ||
-
-                l.includes("cumul") ||
-
-                l.includes("totalizer") ||
-
-                l.includes("discharge") ||
-
-                l.includes("battery") ||
-
-                l.includes("volt") ||
-
-                l.includes("rssi")
-
-            );
-
-        }
-
-        // ====================================
-        // WEATHER STATION
-        // ====================================
-
-        if(type === "weather_station"){
-
-            return (
-
-                l.includes("tw") ||
-
-                l.includes("rhw") ||
-
-                l.includes("bp") ||
-
-                l.includes("rf") ||
-
-                l.includes("ws") ||
-
-                l.includes("wd") ||
-
-                l.includes("sr") ||
-
-                l.includes("temp") ||
-
-                l.includes("humidity") ||
-
-                l.includes("pressure") ||
-
-                l.includes("rain") ||
-
-                l.includes("wind") ||
-
-                l.includes("solar") ||
-
-                l.includes("battery") ||
-
-                l.includes("volt") ||
-
-                l.includes("rssi")
-
-            );
-
-        }
-
-        // ====================================
-        // WATER LEVEL
-        // ====================================
-
-        if(type === "water_level"){
-
-            return (
-
-                l.includes("level") ||
-
-                l.includes("water") ||
-
-                l.includes("depth") ||
-
-                l.includes("height") ||
-
-                l.includes("stage") ||
-
-                l.includes("battery") ||
-
-                l.includes("volt") ||
-
-                l.includes("rssi")
-
-            );
-
-        }
-
-        return false;
+        return (
+            k !== "time"
+            &&
+            k !== "device_id"
+        );
 
     });
 
 }
-// ======================================
-// FILTER DATA
-// ======================================
 
-function getFilteredData(metrics){
-
-    const from =
-        document.getElementById("fromDate").value;
-
-    const to =
-        document.getElementById("toDate").value;
-
-    return rawData.filter(r=>{
-
-        const d =
-            parseTime(r.time);
-
-        // FROM DATE
-
-        if(from){
-
-            const fromDate =
-                new Date(from);
-
-            if(d < fromDate)
-                return false;
-
-        }
-
-        // TO DATE
-
-        if(to){
-
-            const toDate =
-                new Date(to);
-
-            toDate.setDate(
-                toDate.getDate()+1
-            );
-
-            if(d > toDate)
-                return false;
-
-        }
-
-        // HAS DATA
-
-        const hasData =
-            metrics.some(m=>{
-
-                return clean(r[m]) !== null;
-
-            });
-
-        return hasData;
-
-    });
-
-}
-
-// ======================================
+// =====================================
 // CHART
-// ======================================
+// =====================================
 
 let chartInstance = null;
 
-function createChart(device, metrics, data){
+function renderChart(){
 
-    if(chartInstance)
-        chartInstance.destroy();
+    const metrics =
+        getMetrics();
+
+    if(!metrics.length)
+        return;
 
     const labels =
-        data.map(r=>r.time);
+        rawData.map(
+            r=>r.time
+        );
 
-    const datasets = metrics.map(m=>{
+    const datasets = [];
+
+    metrics.forEach(m=>{
 
         const vals =
-            data.map(r=>clean(r[m]));
+            rawData.map(
+                r=>clean(r[m])
+            );
 
-        if(vals.every(v=>v===null))
-            return null;
+        if(
+            vals.every(
+                v=>v===null
+            )
+        ){
+            return;
+        }
 
-        return {
+        datasets.push({
 
             label:
                 cleanLabel(m),
 
-            data: vals,
+            data:
+                vals,
 
             borderWidth:2,
 
             tension:0.3
 
-        };
+        });
 
-    }).filter(Boolean);
+    });
 
-    if(!datasets.length){
-
-        alert("No chart data found");
-
+    if(!datasets.length)
         return;
 
-    }
+    if(chartInstance)
+        chartInstance.destroy();
 
-    chartInstance =
-        new Chart(
+    chartInstance = new Chart(
 
-            document.getElementById(
-                "mainCanvas"
-            ),
+        document.getElementById(
+            "mainCanvas"
+        ),
 
-            {
+        {
 
-                type:"line",
+            type:"line",
 
-                data:{
-                    labels,
-                    datasets
-                },
+            data:{
+                labels,
+                datasets
+            },
 
-                options:{
-                    responsive:true
+            options:{
+
+                responsive:true,
+
+                interaction:{
+                    mode:'index',
+                    intersect:false
                 }
 
             }
 
-        );
+        }
+
+    );
 
 }
 
-// ======================================
+// =====================================
 // STATS
-// ======================================
+// =====================================
 
-function stats(device, metrics, data){
+function renderStats(){
+
+    const metrics =
+        getMetrics();
 
     const el =
         document.getElementById(
@@ -796,11 +758,15 @@ function stats(device, metrics, data){
     metrics.forEach(m=>{
 
         const vals =
-            data
-            .map(r=>clean(r[m]))
-            .filter(v=>v!==null);
+            rawData
+            .map(
+                r=>clean(r[m])
+            )
+            .filter(
+                v=>v!==null
+            );
 
-        if(vals.length===0)
+        if(!vals.length)
             return;
 
         const min =
@@ -828,9 +794,7 @@ function stats(device, metrics, data){
         <hr>
 
         Min : ${min}<br>
-
         Max : ${max}<br>
-
         Avg : ${avg}
 
         </div>
@@ -841,11 +805,14 @@ function stats(device, metrics, data){
 
 }
 
-// ======================================
+// =====================================
 // TABLE
-// ======================================
+// =====================================
 
-function table(device, metrics, data){
+function renderTable(){
+
+    const metrics =
+        getMetrics();
 
     let html =
         "<table>";
@@ -856,15 +823,15 @@ function table(device, metrics, data){
     metrics.forEach(m=>{
 
         html +=
-            "<th>"
-            + cleanLabel(m)
-            + "</th>";
+            `<th>
+            ${cleanLabel(m)}
+            </th>`;
 
     });
 
     html += "</tr>";
 
-    data.forEach(r=>{
+    rawData.forEach(r=>{
 
         html +=
             `<tr><td>${r.time}</td>`;
@@ -872,13 +839,9 @@ function table(device, metrics, data){
         metrics.forEach(m=>{
 
             html +=
-                "<td>"
-                +
-                (
-                    clean(r[m]) ?? "-"
-                )
-                +
-                "</td>";
+                `<td>
+                ${r[m] ?? "-"}
+                </td>`;
 
         });
 
@@ -894,9 +857,9 @@ function table(device, metrics, data){
 
 }
 
-// ======================================
+// =====================================
 // VIEW
-// ======================================
+// =====================================
 
 function showView(type){
 
@@ -904,31 +867,38 @@ function showView(type){
         "chartView"
     ).style.display =
 
-    type==="chart"
-    ? "block"
-    : "none";
+        type==="chart"
+        ? "block"
+        : "none";
 
     document.getElementById(
         "tableView"
     ).style.display =
 
-    type==="table"
-    ? "block"
-    : "none";
+        type==="table"
+        ? "block"
+        : "none";
 
 }
 
-// ======================================
-// MAIN RENDER
-// ======================================
+// =====================================
+// LOAD DASHBOARD
+// =====================================
 
-function render(){
-
-    const category =
-        categorySelect.value;
+function loadDashboard(){
 
     const device =
         deviceSelect.value;
+
+    const from =
+        document.getElementById(
+            "fromDate"
+        ).value;
+
+    const to =
+        document.getElementById(
+            "toDate"
+        ).value;
 
     if(!device){
 
@@ -938,93 +908,99 @@ function render(){
 
     }
 
-    const metrics =
-        getMetrics(
-            device,
-            category
-        );
+    if(!from || !to){
 
-    console.log("METRICS:", metrics);
-
-    const data =
-        getFilteredData(metrics);
-
-    console.log("FILTERED DATA:", data);
-
-    if(!metrics.length){
-
-        alert("No telemetry metrics found");
+        alert("Select dates");
 
         return;
 
     }
 
-    if(!data.length){
+    const url =
 
-        alert("No telemetry data found");
+        `?device=${device}`
 
-        return;
+        + `&from_date=${from}`
 
-    }
+        + `&to_date=${to}`;
 
-    createChart(
-        device,
-        metrics,
-        data
-    );
-
-    stats(
-        device,
-        metrics,
-        data
-    );
-
-    table(
-        device,
-        metrics,
-        data
-    );
-
-    // DEVICE INFO
-
-    const meta =
-        deviceMap[device];
-
-    document.getElementById(
-        "deviceInfo"
-    ).innerHTML = `
-
-    <b>Device:</b>
-    ${meta.name || device}
-
-    <br>
-
-    <b>Village:</b>
-    ${meta.village || "-"}
-
-    <br>
-
-    <b>District:</b>
-    ${meta.district || "-"}
-
-    <br>
-
-    <b>Category:</b>
-    ${meta.category || "-"}
-
-    `;
-
-    document.getElementById(
-        "title"
-    ).innerText =
-
-    meta.name || device;
+    window.location.href = url;
 
 }
 
-// ======================================
+// =====================================
+// DOWNLOAD CSV
+// =====================================
+
+function downloadCSV(){
+
+    if(!rawData.length){
+
+        alert("No data");
+
+        return;
+
+    }
+
+    document.getElementById(
+        "csvTableData"
+    ).value =
+        JSON.stringify(rawData);
+
+    document.getElementById(
+        "csvColumns"
+    ).value =
+        JSON.stringify(
+            Object.keys(
+                rawData[0]
+            )
+        );
+
+    document.getElementById(
+        "csvDevice"
+    ).value =
+        deviceSelect.value;
+
+    document.getElementById(
+        "csvDeviceName"
+    ).value =
+        deviceSelect.options[
+            deviceSelect.selectedIndex
+        ].text;
+
+    document.getElementById(
+        "csvCategory"
+    ).value =
+        categorySelect.value;
+
+    document.getElementById(
+        "csvVillage"
+    ).value =
+        villageSelect.value;
+
+    document.getElementById(
+        "csvFrom"
+    ).value =
+        document.getElementById(
+            "fromDate"
+        ).value;
+
+    document.getElementById(
+        "csvTo"
+    ).value =
+        document.getElementById(
+            "toDate"
+        ).value;
+
+    document.getElementById(
+        "csvForm"
+    ).submit();
+
+}
+
+// =====================================
 // EVENTS
-// ======================================
+// =====================================
 
 categorySelect.addEventListener(
 
@@ -1032,12 +1008,17 @@ categorySelect.addEventListener(
 
     ()=>{
 
-        loadVillages();
+        villageSelect.innerHTML =
+            `<option value="">
+            -- Select Village --
+            </option>`;
 
         deviceSelect.innerHTML =
             `<option value="">
             -- Select Device --
             </option>`;
+
+        loadVillages();
 
     }
 
@@ -1055,13 +1036,122 @@ villageSelect.addEventListener(
 
 );
 
-// ======================================
+// =====================================
 // INIT
-// ======================================
+// =====================================
 
-showView("chart");
+window.onload = function(){
+
+    // DATES
+
+    if(selectedFrom){
+
+        document.getElementById(
+            "fromDate"
+        ).value = selectedFrom;
+
+    }
+
+    if(selectedTo){
+
+        document.getElementById(
+            "toDate"
+        ).value = selectedTo;
+
+    }
+
+    // RESTORE DEVICE
+
+    if(selectedDevice){
+
+        const meta =
+            deviceMap[
+                selectedDevice
+            ];
+
+        if(meta){
+
+            categorySelect.value =
+                meta.category;
+
+            loadVillages();
+
+            villageSelect.value =
+                meta.village;
+
+            loadDevices();
+
+            deviceSelect.value =
+                selectedDevice;
+
+        }
+
+    }
+
+    // SHOW VIEW
+
+    showView("chart");
+
+    // RENDER DATA
+
+    if(rawData.length){
+
+        renderChart();
+
+        renderStats();
+
+        renderTable();
+
+    }
+
+};
 
 </script>
+
+<!-- CSV FORM -->
+
+<form
+    id="csvForm"
+    method="POST"
+    action="{% url 'export_csv' %}"
+    style="display:none;"
+>
+
+{% csrf_token %}
+
+<input type="hidden"
+       name="table_data"
+       id="csvTableData">
+
+<input type="hidden"
+       name="columns"
+       id="csvColumns">
+
+<input type="hidden"
+       name="device"
+       id="csvDevice">
+
+<input type="hidden"
+       name="device_name"
+       id="csvDeviceName">
+
+<input type="hidden"
+       name="category"
+       id="csvCategory">
+
+<input type="hidden"
+       name="village"
+       id="csvVillage">
+
+<input type="hidden"
+       name="from_date"
+       id="csvFrom">
+
+<input type="hidden"
+       name="to_date"
+       id="csvTo">
+
+</form>
 
 </body>
 </html>
