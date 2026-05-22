@@ -6,7 +6,6 @@
 
 <title>IoT Dashboard</title>
 
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
@@ -60,16 +59,36 @@ button{
 
 .stats{
     display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
-    gap:10px;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:14px;
     margin-bottom:20px;
 }
 
 .stat-box{
-    background:#eef5ff;
-    padding:12px;
-    border-radius:8px;
+
+    background:linear-gradient(
+        180deg,
+        #f8fbff,
+        #eef5ff
+    );
+
+    padding:16px;
+
+    border-radius:14px;
+
     text-align:center;
+
+    border:1px solid #dbeafe;
+
+    box-shadow:
+        0 2px 8px rgba(0,0,0,0.05);
+
+    transition:0.2s;
+
+}
+
+.stat-box:hover{
+    transform:translateY(-2px);
 }
 
 .table-wrap{
@@ -106,11 +125,110 @@ tr:hover{
     border-radius:10px;
 }
 
+/* ====================================
+CHART CARDS
+==================================== */
+
+.chart-card{
+
+    background:#ffffff;
+
+    border-radius:18px;
+
+    margin-top:30px;
+
+    box-shadow:
+        0 4px 14px rgba(0,0,0,0.08);
+
+    overflow:hidden;
+
+    border:1px solid #e5e7eb;
+
+}
+
+/* HEADER */
+
+.chart-header{
+
+    background:linear-gradient(
+        90deg,
+        #0f172a,
+        #1e293b
+    );
+
+    color:white;
+
+    padding:14px 20px;
+
+    font-size:18px;
+
+    font-weight:bold;
+
+    letter-spacing:0.5px;
+
+}
+
+/* BODY */
+
+.chart-body{
+
+    padding:20px;
+
+    height:500px;
+
+    position:relative;
+
+}
+
+/* WIND BODY */
+
+.wind-body{
+
+    height:600px;
+
+}
+
+#mainCanvas,
+#windRoseCanvas{
+
+    width:100% !important;
+
+    height:100% !important;
+
+}
+
 </style>
 
 </head>
 
 <body>
+
+<div style="
+    width:100%;
+    padding:10px;
+    background:#1e293b;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:20px;
+">
+
+    <div style="color:white;font-weight:bold;">
+        📊 Custom Dashboard
+    </div>
+
+    <a href="/"
+       style="
+        background:#16a34a;
+        color:white;
+        padding:8px 12px;
+        border-radius:6px;
+        text-decoration:none;
+    ">
+        🏠 Home
+    </a>
+
+</div>
 
 <div class="header">
 
@@ -262,10 +380,43 @@ Analytics
 
 <div id="chartView">
 
-<div class="stats"
-     id="statsBox"></div>
+    <!-- STATS -->
+    <div class="stats"
+         id="statsBox"></div>
 
-<canvas id="mainCanvas"></canvas>
+    <!-- MAIN CHART -->
+
+    <div class="chart-card">
+
+        <div class="chart-header">
+            📈 Weather Analytics
+        </div>
+
+        <div class="chart-body">
+
+            <canvas id="mainCanvas"></canvas>
+
+        </div>
+
+    </div>
+
+    <!-- WIND ROSE -->
+
+    <div id="windRoseContainer"
+         class="chart-card"
+         style="display:none;">
+
+        <div class="chart-header">
+            🌬 Wind Direction Rose
+        </div>
+
+        <div class="chart-body wind-body">
+
+            <canvas id="windRoseCanvas"></canvas>
+
+        </div>
+
+    </div>
 
 </div>
 
@@ -284,20 +435,21 @@ Analytics
 // DATA
 // =====================================
 
-const rawData = JSON.parse(
-    document.getElementById(
-        "table-data"
-    ).textContent
-);
+const rawData =
+    JSON.parse(
+        document
+        .getElementById(
+            "table-data"
+        ).textContent
+    );
 
-const deviceMap = JSON.parse(
-    document.getElementById(
-        "device-map"
-    ).textContent
-);
-
-console.log("RAW DATA:", rawData);
-console.log("DEVICE MAP:", deviceMap);
+const deviceMap =
+    JSON.parse(
+        document
+        .getElementById(
+            "device-map"
+        ).textContent
+    );
 
 // =====================================
 // ELEMENTS
@@ -348,42 +500,30 @@ function loadVillages(){
     if(!category)
         return;
 
-    const villages = new Set();
+    const villages =
+        new Set();
 
-    Object.entries(deviceMap).forEach(
+    Object.entries(deviceMap)
+    .forEach(([device,meta])=>{
 
-        ([device, meta])=>{
+        if(
+            String(meta.category)
+            .toLowerCase()
+            ===
+            category.toLowerCase()
+        ){
 
-            const metaCategory = String(
-                meta.category || ""
-            )
-            .trim()
-            .toLowerCase();
+            if(meta.village){
 
-            const selectedCategory = String(
-                category || ""
-            )
-            .trim()
-            .toLowerCase();
-
-            if(
-                metaCategory ===
-                selectedCategory
-            ){
-
-                if(meta.village){
-
-                    villages.add(
-                        meta.village
-                    );
-
-                }
+                villages.add(
+                    meta.village
+                );
 
             }
 
         }
 
-    );
+    });
 
     [...villages]
     .sort()
@@ -398,9 +538,7 @@ function loadVillages(){
 
         opt.textContent = v;
 
-        villageSelect.appendChild(
-            opt
-        );
+        villageSelect.appendChild(opt);
 
     });
 
@@ -423,189 +561,80 @@ function loadDevices(){
         -- Select Device --
         </option>`;
 
-    Object.entries(deviceMap).forEach(
+    Object.entries(deviceMap)
+    .forEach(([deviceKey,meta])=>{
 
-        ([deviceKey, meta])=>{
+        if(
 
-            const metaCategory = String(
-                meta.category || ""
-            )
-            .trim()
-            .toLowerCase();
+            String(meta.category)
+            .toLowerCase()
+            ===
+            category.toLowerCase()
 
-            const selectedCategory = String(
-                category || ""
-            )
-            .trim()
-            .toLowerCase();
+            &&
 
-            const metaVillage = String(
-                meta.village || ""
-            )
-            .trim()
-            .toLowerCase();
+            String(meta.village)
+            .toLowerCase()
+            ===
+            village.toLowerCase()
 
-            const selectedVillage = String(
-                village || ""
-            )
-            .trim()
-            .toLowerCase();
+        ){
 
-            if(
-
-                metaCategory ===
-                selectedCategory
-
-                &&
-
-                metaVillage ===
-                selectedVillage
-
-            ){
-
-                const opt =
-                    document.createElement(
-                        "option"
-                    );
-
-                opt.value =
-                    deviceKey;
-
-                opt.textContent =
-                    meta.name ||
-                    deviceKey;
-
-                deviceSelect.appendChild(
-                    opt
+            const opt =
+                document.createElement(
+                    "option"
                 );
 
-            }
+            opt.value =
+                deviceKey;
+
+            opt.textContent =
+                meta.name ||
+                deviceKey;
+
+            deviceSelect.appendChild(opt);
 
         }
 
-    );
+    });
 
 }
 
 // =====================================
-// CLEAN LABEL
-// =====================================
-
-// =====================================
-// NORMALIZED LABELS
+// LABELS
 // =====================================
 
 function cleanLabel(label){
 
-    // convert to lowercase for matching
-    const l = label.toLowerCase();
+    const l =
+        label.toLowerCase();
 
-    // =================================
-    // WEATHER STATION
-    // =================================
-
-    if(l === "tw")
+    if(l.includes("weather_tw"))
         return "Temperature (°C)";
 
-    if(l === "rhw")
-        return "Relative Humidity (%)";
+    if(l.includes("weather_rhw"))
+        return "Humidity (%)";
 
-    if(l === "bp")
-        return "Barometric Pressure (hPa)";
+    if(l.includes("weather_bp"))
+        return "Pressure (hPa)";
 
-    if(l === "rf")
+    if(l.includes("weather_rf"))
         return "Rainfall (mm)";
 
-    if(l === "ws")
+    if(l.includes("weather_ws"))
         return "Wind Speed (m/s)";
 
-    if(l === "wd")
+    if(l.includes("weather_wd"))
         return "Wind Direction (°)";
 
-    if(l === "sr")
-        return "Solar Radiation (W/m²)";
+    if(l.includes("weather_sr"))
+        return "Solar Radiation";
 
-    // =================================
-    // BATTERY + SIGNAL
-    // =================================
-
-    if(
-        l.includes("battery") &&
-        l.includes("volt")
-    ){
+    if(l.includes("battery"))
         return "Battery Voltage (V)";
-    }
-
-    if(l.includes("battery")){
-        return "Battery Level";
-    }
-
-    if(l.includes("rssi")){
-        return "Signal Strength (RSSI)";
-    }
-
-    // =================================
-    // WATER LEVEL
-    // =================================
-
-    if(
-        l.includes("water") &&
-        l.includes("lev")
-    ){
-        return "Water Level (m)";
-    }
-
-    if(l.includes("depth")){
-        return "Water Depth (m)";
-    }
-
-    if(l.includes("stage")){
-        return "Water Stage";
-    }
-
-    if(l.includes("height")){
-        return "Water Height";
-    }
-
-    // =================================
-    // FLOW METER
-    // =================================
-
-    if(l.includes("flow_rate")){
-        return "Flow Rate";
-    }
-
-    if(l.includes("flow")){
-        return "Flow";
-    }
-
-    if(l.includes("totalizer")){
-        return "Totalizer";
-    }
-
-    if(
-        l.includes("cuml") ||
-        l.includes("cumulative")
-    ){
-        return "Cumulative Flow (m³)";
-    }
-
-    // =================================
-    // DEFAULT CLEANUP
-    // =================================
 
     return label
-
-        .replaceAll("_", " ")
-
-        .replace(/\bjson\b/gi, "")
-
-        .replace(/\bweather\b/gi, "")
-
-        .replace(/\btelemetry\b/gi, "")
-
-        .replace(/\s+/g, " ")
-
+        .replaceAll("_"," ")
         .trim();
 
 }
@@ -636,11 +665,19 @@ function getMetrics(){
     if(!rawData.length)
         return [];
 
-    return Object.keys(
-        rawData[0]
-    ).filter(k=>{
+    return Object.keys(rawData[0])
+    .filter(k=>{
 
-        return (
+        const l =
+            k.toLowerCase();
+
+        if(
+            l.includes("rssi")
+        ){
+            return false;
+        }
+
+        return(
             k !== "time"
             &&
             k !== "device_id"
@@ -655,23 +692,35 @@ function getMetrics(){
 // =====================================
 
 let chartInstance = null;
+let windRoseChart = null;
 
 function renderChart(){
 
     const metrics =
         getMetrics();
 
-    if(!metrics.length)
-        return;
-
     const labels =
-        rawData.map(
-            r=>r.time
-        );
+        rawData.map(r=>r.time);
 
     const datasets = [];
 
+    let windDirectionField =
+        null;
+
     metrics.forEach(m=>{
+
+        const l =
+            m.toLowerCase();
+
+        if(
+            l.includes("_wd")
+        ){
+
+            windDirectionField = m;
+
+            return;
+
+        }
 
         const vals =
             rawData.map(
@@ -679,9 +728,7 @@ function renderChart(){
             );
 
         if(
-            vals.every(
-                v=>v===null
-            )
+            vals.every(v=>v===null)
         ){
             return;
         }
@@ -702,41 +749,169 @@ function renderChart(){
 
     });
 
-    if(!datasets.length)
-        return;
-
     if(chartInstance)
         chartInstance.destroy();
 
-    chartInstance = new Chart(
+    chartInstance =
+        new Chart(
 
-        document.getElementById(
-            "mainCanvas"
-        ),
+            document.getElementById(
+                "mainCanvas"
+            ),
 
-        {
+            {
 
-            type:"line",
+                type:"line",
 
-            data:{
-                labels,
-                datasets
-            },
+                data:{
+                    labels,
+                    datasets
+                },
 
-            options:{
+                options:{
 
-                responsive:true,
+                    responsive:true,
 
-                interaction:{
-                    mode:'index',
-                    intersect:false
+                    interaction:{
+                        mode:'index',
+                        intersect:false
+                    }
+
                 }
 
             }
 
-        }
+        );
 
+    renderWindRose(
+        windDirectionField
     );
+
+}
+
+// =====================================
+// WIND ROSE
+// =====================================
+
+function renderWindRose(
+    field
+){
+
+    const container =
+        document.getElementById(
+            "windRoseContainer"
+        );
+
+    if(!field){
+
+        container.style.display =
+            "none";
+
+        return;
+
+    }
+
+    const directions =
+        rawData
+        .map(r=>clean(r[field]))
+        .filter(v=>v!==null);
+
+    if(!directions.length){
+
+        container.style.display =
+            "none";
+
+        return;
+
+    }
+
+    container.style.display =
+        "block";
+
+    const bins = {
+
+        N:0,
+        NE:0,
+        E:0,
+        SE:0,
+        S:0,
+        SW:0,
+        W:0,
+        NW:0
+
+    };
+
+    directions.forEach(d=>{
+
+        if(d >= 337.5 || d < 22.5)
+            bins.N++;
+
+        else if(d < 67.5)
+            bins.NE++;
+
+        else if(d < 112.5)
+            bins.E++;
+
+        else if(d < 157.5)
+            bins.SE++;
+
+        else if(d < 202.5)
+            bins.S++;
+
+        else if(d < 247.5)
+            bins.SW++;
+
+        else if(d < 292.5)
+            bins.W++;
+
+        else
+            bins.NW++;
+
+    });
+
+    if(windRoseChart)
+        windRoseChart.destroy();
+
+    windRoseChart =
+        new Chart(
+
+            document
+            .getElementById(
+                "windRoseCanvas"
+            ),
+
+            {
+
+                type:"polarArea",
+
+                data:{
+
+                    labels:
+                        Object.keys(bins),
+
+                    datasets:[{
+
+                        label:
+                            "Wind Direction",
+
+                        data:
+                            Object.values(bins)
+
+                    }]
+
+                },
+
+                options:{
+
+                    responsive:true,
+
+                    maintainAspectRatio:false
+
+                }
+
+            }
+
+        );
 
 }
 
@@ -760,47 +935,139 @@ function renderStats(){
 
         const vals =
             rawData
-            .map(
-                r=>clean(r[m])
-            )
-            .filter(
-                v=>v!==null
-            );
+            .map(r=>clean(r[m]))
+            .filter(v=>v!==null);
 
         if(!vals.length)
             return;
 
-        const min =
-            Math.min(...vals);
+        // WIND DIRECTION
 
-        const max =
-            Math.max(...vals);
+        if(
+            m.toLowerCase()
+            .includes("_wd")
+        ){
 
-        const avg =
-            (
-                vals.reduce(
-                    (a,b)=>a+b,
-                    0
-                ) / vals.length
-            ).toFixed(2);
+            const bins = {
 
-        el.innerHTML += `
+                N:0,
+                NE:0,
+                E:0,
+                SE:0,
+                S:0,
+                SW:0,
+                W:0,
+                NW:0
 
-        <div class="stat-box">
+            };
 
-        <b>
-        ${cleanLabel(m)}
-        </b>
+            vals.forEach(d=>{
 
-        <hr>
+                if(d >= 337.5 || d < 22.5)
+                    bins.N++;
 
-        Min : ${min}<br>
-        Max : ${max}<br>
-        Avg : ${avg}
+                else if(d < 67.5)
+                    bins.NE++;
 
-        </div>
+                else if(d < 112.5)
+                    bins.E++;
 
-        `;
+                else if(d < 157.5)
+                    bins.SE++;
+
+                else if(d < 202.5)
+                    bins.S++;
+
+                else if(d < 247.5)
+                    bins.SW++;
+
+                else if(d < 292.5)
+                    bins.W++;
+
+                else
+                    bins.NW++;
+
+            });
+
+            const dominant =
+                Object.entries(bins)
+                .sort((a,b)=>b[1]-a[1])[0];
+
+            el.innerHTML += `
+
+            <div class="stat-box">
+
+                <div style="
+                    font-size:18px;
+                    font-weight:bold;
+                ">
+                    🌬 Wind Direction
+                </div>
+
+                <div style="
+                    font-size:38px;
+                    font-weight:bold;
+                    margin-top:10px;
+                ">
+                    ${dominant[0]}
+                </div>
+
+                <div style="
+                    margin-top:10px;
+                    line-height:1.7;
+                ">
+
+                    Dominant Count :
+                    <b>${dominant[1]}</b>
+
+                    <br>
+
+                    Total Readings :
+                    <b>${vals.length}</b>
+
+                </div>
+
+            </div>
+
+            `;
+
+        }
+
+        else{
+
+            const min =
+                Math.min(...vals);
+
+            const max =
+                Math.max(...vals);
+
+            const avg =
+                (
+                    vals.reduce(
+                        (a,b)=>a+b,
+                        0
+                    ) / vals.length
+                ).toFixed(2);
+
+            el.innerHTML += `
+
+            <div class="stat-box">
+
+                <b>
+                    ${cleanLabel(m)}
+                </b>
+
+                <hr>
+
+                Min : ${min}<br>
+                Max : ${max}<br>
+                Avg : ${avg}
+
+            </div>
+
+            `;
+
+        }
 
     });
 
@@ -823,10 +1090,10 @@ function renderTable(){
 
     metrics.forEach(m=>{
 
-        html +=
-            `<th>
-            ${cleanLabel(m)}
-            </th>`;
+        html += `
+        <th>
+        ${cleanLabel(m)}
+        </th>`;
 
     });
 
@@ -835,14 +1102,15 @@ function renderTable(){
     rawData.forEach(r=>{
 
         html +=
-            `<tr><td>${r.time}</td>`;
+            `<tr>
+            <td>${r.time}</td>`;
 
         metrics.forEach(m=>{
 
-            html +=
-                `<td>
-                ${r[m] ?? "-"}
-                </td>`;
+            html += `
+            <td>
+            ${r[m] ?? "-"}
+            </td>`;
 
         });
 
@@ -917,15 +1185,13 @@ function loadDashboard(){
 
     }
 
-    const url =
+    window.location.href =
 
         `?device=${device}`
 
         + `&from_date=${from}`
 
         + `&to_date=${to}`;
-
-    window.location.href = url;
 
 }
 
@@ -934,14 +1200,6 @@ function loadDashboard(){
 // =====================================
 
 function downloadCSV(){
-
-    if(!rawData.length){
-
-        alert("No data");
-
-        return;
-
-    }
 
     document.getElementById(
         "csvTableData"
@@ -952,46 +1210,13 @@ function downloadCSV(){
         "csvColumns"
     ).value =
         JSON.stringify(
-            Object.keys(
-                rawData[0]
-            )
+            Object.keys(rawData[0])
         );
 
     document.getElementById(
         "csvDevice"
     ).value =
         deviceSelect.value;
-
-    document.getElementById(
-        "csvDeviceName"
-    ).value =
-        deviceSelect.options[
-            deviceSelect.selectedIndex
-        ].text;
-
-    document.getElementById(
-        "csvCategory"
-    ).value =
-        categorySelect.value;
-
-    document.getElementById(
-        "csvVillage"
-    ).value =
-        villageSelect.value;
-
-    document.getElementById(
-        "csvFrom"
-    ).value =
-        document.getElementById(
-            "fromDate"
-        ).value;
-
-    document.getElementById(
-        "csvTo"
-    ).value =
-        document.getElementById(
-            "toDate"
-        ).value;
 
     document.getElementById(
         "csvForm"
@@ -1004,37 +1229,17 @@ function downloadCSV(){
 // =====================================
 
 categorySelect.addEventListener(
-
     "change",
-
     ()=>{
-
-        villageSelect.innerHTML =
-            `<option value="">
-            -- Select Village --
-            </option>`;
-
-        deviceSelect.innerHTML =
-            `<option value="">
-            -- Select Device --
-            </option>`;
-
         loadVillages();
-
     }
-
 );
 
 villageSelect.addEventListener(
-
     "change",
-
     ()=>{
-
         loadDevices();
-
     }
-
 );
 
 // =====================================
@@ -1043,13 +1248,12 @@ villageSelect.addEventListener(
 
 window.onload = function(){
 
-    // DATES
-
     if(selectedFrom){
 
         document.getElementById(
             "fromDate"
-        ).value = selectedFrom;
+        ).value =
+            selectedFrom;
 
     }
 
@@ -1057,18 +1261,15 @@ window.onload = function(){
 
         document.getElementById(
             "toDate"
-        ).value = selectedTo;
+        ).value =
+            selectedTo;
 
     }
-
-    // RESTORE DEVICE
 
     if(selectedDevice){
 
         const meta =
-            deviceMap[
-                selectedDevice
-            ];
+            deviceMap[selectedDevice];
 
         if(meta){
 
@@ -1089,11 +1290,7 @@ window.onload = function(){
 
     }
 
-    // SHOW VIEW
-
     showView("chart");
-
-    // RENDER DATA
 
     if(rawData.length){
 
@@ -1131,26 +1328,6 @@ window.onload = function(){
 <input type="hidden"
        name="device"
        id="csvDevice">
-
-<input type="hidden"
-       name="device_name"
-       id="csvDeviceName">
-
-<input type="hidden"
-       name="category"
-       id="csvCategory">
-
-<input type="hidden"
-       name="village"
-       id="csvVillage">
-
-<input type="hidden"
-       name="from_date"
-       id="csvFrom">
-
-<input type="hidden"
-       name="to_date"
-       id="csvTo">
 
 </form>
 
