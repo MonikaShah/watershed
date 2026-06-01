@@ -8,6 +8,7 @@ import pandas as pd
 from django.http import HttpResponse
 from django.shortcuts import render
 from .models import Device, DeviceMetadata
+from rest_framework.decorators import api_view
 
 # from .utils import fetch_device_data
 
@@ -307,7 +308,7 @@ def get_telemetry(
 
                 flat = flatten_json(parsed)
 
-                # =================================
+                # =======================do==========
                 # REMOVE META
                 # =================================
 
@@ -686,3 +687,69 @@ def export_csv(request):
 
         df.to_csv(response, index=False)
         return response
+    
+
+# views.py
+
+def dashboard_compare(request):
+
+    device_meta = DeviceMetadata.objects.all()
+
+    device_map = {}
+
+    for d in device_meta:
+
+        device_map[d.device_id] = {
+
+            "village": d.village,
+            "district": d.district,
+            "category": d.category,
+            "lat": d.latitude,
+            "lon": d.longitude,
+            "name": d.device_name
+
+        }
+
+    return render(
+
+        request,
+
+        "ingestion/dashboard_compare.html",
+
+        {
+            "device_map": device_map
+        }
+
+    )
+
+@api_view(["GET"])
+def device_comparison_api(request):
+
+    devices = request.GET.get(
+        "devices",
+        ""
+    )
+
+    metric = request.GET.get(
+        "metric",
+        ""
+    )
+
+    return Response({
+
+        "labels": [
+            "10:00",
+            "11:00",
+            "12:00"
+        ],
+
+        "datasets": [
+
+            {
+                "label": devices,
+                "data": [10, 20, 30]
+            }
+
+        ]
+
+    })
