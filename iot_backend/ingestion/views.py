@@ -528,7 +528,7 @@ def dashboard_v5(request):
 
         request,
 
-        "ingestion/dashboard_v5.html",
+        "ingestion/dashboard_v6.html",
 
         {
 

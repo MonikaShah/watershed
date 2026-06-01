@@ -1,0 +1,1259 @@
+    {% load custom_tags %}
+    <!DOCTYPE html>
+    <html>
+
+    <head>
+
+    <title>IoT Dashboard</title>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+
+    body{
+        font-family:Arial;
+        background:#f4f6fb;
+        margin:0;
+    }
+
+    .header{
+        background:#fff;
+        padding:15px;
+        box-shadow:0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .controls{
+        display:flex;
+        gap:12px;
+        flex-wrap:wrap;
+        align-items:end;
+    }
+
+    .section-title{
+        font-weight:bold;
+        margin-bottom:5px;
+    }
+
+    select,input{
+        padding:8px;
+        border-radius:6px;
+        border:1px solid #ddd;
+        min-width:200px;
+    }
+
+    button{
+        background:#2ba0c7;
+        color:white;
+        border:none;
+        padding:8px 12px;
+        border-radius:6px;
+        cursor:pointer;
+    }
+
+    .card{
+        background:#fff;
+        margin:20px;
+        padding:20px;
+        border-radius:10px;
+    }
+
+    /* .stats{
+        display:grid;
+        grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+        gap:10px;
+        margin-bottom:20px;
+    } */
+
+    /* .stat-box{
+        background:#eef5ff;
+        padding:12px;
+        border-radius:8px;
+        text-align:center;
+    } */
+    #metricSelector{
+        display:flex;
+        flex-wrap:wrap;
+        gap:15px 25px;
+        align-items:center;
+        margin-bottom:20px;
+    }
+
+    #metricSelector label{
+        display:flex;
+        align-items:center;
+        gap:6px;
+        white-space:nowrap;
+        font-size:14px;
+        cursor:pointer;
+    }
+    .table-wrap{
+        max-height:500px;
+        overflow:auto;
+    }
+
+    table{
+        width:100%;
+        border-collapse:collapse;
+    }
+
+    th,td{
+        border:1px solid #ddd;
+        padding:6px;
+        text-align:center;
+    }
+
+    th{
+        background:#2ba0c7;
+        color:white;
+        position:sticky;
+        top:0;
+    }
+
+    tr:hover{
+        background:#eef;
+    }
+
+    #deviceInfo{
+        background:#eef5ff;
+        padding:15px;
+        margin-bottom:20px;
+        border-radius:10px;
+    }
+
+    </style>
+
+    </head>
+
+    <body>
+
+    <div class="header">
+
+    <h2>📊 IoT Dashboard</h2>
+
+    <div class="controls">
+
+    <!-- CATEGORY -->
+
+    <div>
+
+    <div class="section-title">
+    Category
+    </div>
+
+    <select id="categorySelect">
+
+    <option value="">
+    -- Select Category --
+    </option>
+
+    <option value="flow_meter">
+    🌊 Flow Meter
+    </option>
+
+    <option value="weather_station">
+    🌦 Weather Station
+    </option>
+
+    <option value="water_level">
+    💧 Water Level Detector
+    </option>
+
+    </select>
+
+    </div>
+
+    <!-- VILLAGE -->
+
+    <div>
+
+    <div class="section-title">
+    Village
+    </div>
+
+    <select id="villageSelect">
+
+    <option value="">
+    -- Select Village --
+    </option>
+
+    </select>
+
+    </div>
+
+    <!-- DEVICE -->
+
+    <div>
+
+    <div class="section-title">
+    Device
+    </div>
+
+    <select id="deviceSelect">
+
+    <option value="">
+    -- Select Device --
+    </option>
+
+    </select>
+
+    </div>
+
+    <!-- FROM -->
+
+    <div>
+
+    <div class="section-title">
+    From Date
+    </div>
+
+    <input type="date" id="fromDate">
+
+    </div>
+
+    <!-- TO -->
+
+    <div>
+
+    <div class="section-title">
+    To Date
+    </div>
+
+    <input type="date" id="toDate">
+
+    </div>
+
+    <!-- LOAD -->
+
+    <div>
+
+    <button type="button"
+            onclick="loadDashboard()">
+
+    Load
+
+    </button>
+
+    </div>
+
+    <!-- VIEW -->
+
+    <div>
+
+    <button type="button"
+            onclick="showView('chart')">
+
+    📈 Chart
+
+    </button>
+
+    <button type="button"
+            onclick="showView('table')">
+
+    📋 Table
+
+    </button>
+
+    <button type="button"
+            onclick="downloadCSV()">
+
+    ⬇ Download CSV
+
+    </button>
+
+    </div>
+
+    </div>
+
+    </div>
+
+    <div class="card">
+
+    <h3 id="title">
+    Select checkboxes to display metrics
+    </h3>
+
+    
+    <div ></div>
+<div id="deviceInfo"></div>
+    <div id="chartView">
+
+    <!-- <div class="stats"
+        id="statsBox"></div> -->
+
+    <div id="metricSelector"
+     style="margin-bottom:15px;">
+    </div>
+    <canvas id="mainCanvas"></canvas>
+
+    </div>
+
+    <div id="tableView"
+        style="display:none;"
+        class="table-wrap"></div>
+
+    </div>
+
+    {{ table_data|json_script:"table-data" }}
+    {{ device_map|json_script:"device-map" }}
+
+    <script>
+
+    // =====================================
+    // DATA
+    // =====================================
+
+    const rawData = JSON.parse(
+        document.getElementById(
+            "table-data"
+        ).textContent
+    );
+
+    const deviceMap = JSON.parse(
+        document.getElementById(
+            "device-map"
+        ).textContent
+    );
+
+    console.log("RAW DATA:", rawData);
+    console.log("DEVICE MAP:", deviceMap);
+
+    // =====================================
+    // ELEMENTS
+    // =====================================
+
+    const categorySelect =
+        document.getElementById(
+            "categorySelect"
+        );
+
+    const villageSelect =
+        document.getElementById(
+            "villageSelect"
+        );
+
+    const deviceSelect =
+        document.getElementById(
+            "deviceSelect"
+        );
+
+    // =====================================
+    // DJANGO VALUES
+    // =====================================
+
+    const selectedDevice =
+        "{{ selected_device|default:'' }}";
+
+    const selectedFrom =
+        "{{ from_date|default:'' }}";
+
+    const selectedTo =
+        "{{ to_date|default:'' }}";
+
+    // =====================================
+    // LOAD VILLAGES
+    // =====================================
+
+    function loadVillages(){
+
+        const category =
+            categorySelect.value;
+
+        villageSelect.innerHTML =
+            `<option value="">
+            -- Select Village --
+            </option>`;
+
+        if(!category)
+            return;
+
+        const villages = new Set();
+
+        Object.entries(deviceMap).forEach(
+
+            ([device, meta])=>{
+
+                const metaCategory = String(
+                    meta.category || ""
+                )
+                .trim()
+                .toLowerCase();
+
+                const selectedCategory = String(
+                    category || ""
+                )
+                .trim()
+                .toLowerCase();
+
+                if(
+                    metaCategory ===
+                    selectedCategory
+                ){
+
+                    if(meta.village){
+
+                        villages.add(
+                            meta.village
+                        );
+
+                    }
+
+                }
+
+            }
+
+        );
+
+        [...villages]
+        .sort()
+        .forEach(v=>{
+
+            const opt =
+                document.createElement(
+                    "option"
+                );
+
+            opt.value = v;
+
+            opt.textContent = v;
+
+            villageSelect.appendChild(
+                opt
+            );
+
+        });
+
+    }
+
+    // =====================================
+    // LOAD DEVICES
+    // =====================================
+
+    function loadDevices(){
+
+        const category =
+            categorySelect.value;
+
+        const village =
+            villageSelect.value;
+
+        deviceSelect.innerHTML =
+            `<option value="">
+            -- Select Device --
+            </option>`;
+
+        Object.entries(deviceMap).forEach(
+
+            ([deviceKey, meta])=>{
+
+                const metaCategory = String(
+                    meta.category || ""
+                )
+                .trim()
+                .toLowerCase();
+
+                const selectedCategory = String(
+                    category || ""
+                )
+                .trim()
+                .toLowerCase();
+
+                const metaVillage = String(
+                    meta.village || ""
+                )
+                .trim()
+                .toLowerCase();
+
+                const selectedVillage = String(
+                    village || ""
+                )
+                .trim()
+                .toLowerCase();
+
+                if(
+
+                    metaCategory ===
+                    selectedCategory
+
+                    &&
+
+                    metaVillage ===
+                    selectedVillage
+
+                ){
+
+                    const opt =
+                        document.createElement(
+                            "option"
+                        );
+
+                    opt.value =
+                        deviceKey;
+
+                    opt.textContent =
+                        meta.name ||
+                        deviceKey;
+
+                    deviceSelect.appendChild(
+                        opt
+                    );
+
+                }
+
+            }
+
+        );
+
+    }
+    // ======================================
+    // Render Metric Selector
+    // =====================================
+    function renderMetricSelector(){
+
+    const container =
+        document.getElementById(
+            "metricSelector"
+        );
+
+    const metrics =
+        getMetrics();
+
+    container.innerHTML = "";
+
+    metrics.forEach(metric => {
+
+        const label =
+            cleanLabel(metric);
+
+        const checkbox =
+            document.createElement("input");
+
+        checkbox.type = "checkbox";
+        checkbox.value = metric;
+
+        // Default selection
+        const l = metric.toLowerCase();
+
+        if(
+            l === "tw" ||
+            l.endsWith("_tw") ||
+            l === "rhf" ||
+            l === "rhw" ||
+            l.endsWith("_rhf") ||
+            l.endsWith("_rhw")
+        ){
+            checkbox.checked = true;
+        }
+
+        checkbox.addEventListener(
+            "change",
+            renderChart
+        );
+
+        // const wrapper =
+        //     document.createElement("label");
+
+        // wrapper.style.marginRight =
+        //     "15px";
+
+        // wrapper.appendChild(
+        //     checkbox
+        // );
+
+       const wrapper = document.createElement("label");
+
+        wrapper.appendChild(checkbox);
+
+        wrapper.append(
+            document.createTextNode(
+                cleanLabel(metric)
+            )
+        );
+
+        container.appendChild(
+            wrapper
+        );
+
+    });
+
+}
+
+    // =====================================
+    // CLEAN LABEL
+    // =====================================
+
+    // =====================================
+    // NORMALIZED LABELS
+    // =====================================
+
+    function cleanLabel(label){
+
+        // convert to lowercase for matching
+        const l = label.toLowerCase();
+
+        // =================================
+        // WEATHER STATION
+        // =================================
+
+        if(l === "tw"|| l.endsWith("_tw"))
+            return "Temperature (°C)";
+
+        if(l === "rhw" || l.endsWith("_rhw"))
+            return "Relative Humidity (%)";
+
+        if(l === "bp" || l.endsWith("_bp"))
+            return "Barometric Pressure (hPa)";
+
+        if(l === "rf" || l.endsWith("_rf"))
+            return "Rainfall (mm)";
+
+        if(l === "ws" || l.endsWith("_ws"))
+            return "Wind Speed (m/s)";
+
+        if(l === "wd" || l.endsWith("_wd"))
+            return "Wind Direction (°)";
+
+        if(l === "sr" || l.endsWith("_sr"))
+            return "Solar Radiation (W/m²)";
+
+        // =================================
+        // BATTERY + SIGNAL
+        // =================================
+
+        if(
+            l.includes("battery") &&
+            l.includes("volt")
+        ){
+            return "Battery Voltage (V)";
+        }
+
+        if(l.includes("battery")){
+            return "Battery Level";
+        }
+
+        if(l.includes("rssi")){
+            return "Signal Strength (RSSI)";
+        }
+
+        // =================================
+        // WATER LEVEL
+        // =================================
+
+        if(
+            l.includes("water") &&
+            l.includes("lev")
+        ){
+            return "Water Level (m)";
+        }
+        if(l.includes("depth")){
+            return "Water Depth (m)";
+        }
+
+        if(l.includes("stage")){
+            return "Water Stage";
+        }
+
+        if(l.includes("height")){
+            return "Water Height";
+        }
+
+        // =================================
+        // FLOW METER
+        // =================================
+
+        if(l.includes("flow_rate")){
+            return "Flow Rate";
+        }
+
+        if(l.includes("flow")){
+            return "Flow";
+        }
+
+        if(l.includes("totalizer")){
+            return "Totalizer";
+        }
+
+        if(
+            l.includes("cuml") ||
+            l.includes("cumulative")
+        ){
+            return "Cumulative Flow (m³)";
+        }
+
+        // =================================
+        // DEFAULT CLEANUP
+        // =================================
+
+        return label
+
+            .replaceAll("_", " ")
+
+            .replace(/\bjson\b/gi, "")
+
+            .replace(/\bweather\b/gi, "")
+
+            .replace(/\btelemetry\b/gi, "")
+
+            .replace(/\s+/g, " ")
+
+            .trim();
+
+    }
+
+    // =====================================
+    // CLEAN VALUE
+    // =====================================
+
+    function clean(v){
+
+        if(v===null || v==="")
+            return null;
+
+        const n = Number(v);
+
+        return isNaN(n)
+            ? null
+            : n;
+
+    }
+
+    // =====================================
+    // METRICS
+    // =====================================
+
+    function getMetrics(){
+
+        if(!rawData.length)
+            return [];
+
+        return Object.keys(
+            rawData[0]
+        ).filter(k=>{
+
+            return (
+                k !== "time"
+                &&
+                k !== "device_id"
+                &&
+                !k.includes("rssi") 
+                &&
+                !k.includes("battery")
+                &&
+                !k.includes("cuml_total_m3")
+            );
+
+        });
+
+    }
+
+    // =====================================
+    // CHART
+    // =====================================
+
+    let chartInstance = null;
+
+    function renderChart(){
+
+        const metrics = Array.from(
+            document.querySelectorAll(
+                '#metricSelector input[type="checkbox"]:checked'
+            )
+        ).map(cb => cb.value);
+
+        if(!metrics.length)
+            return;
+
+        const labels =
+            rawData.map(
+                r=>r.time
+            );
+
+        const datasets = [];
+
+        metrics.forEach(m=>{
+
+            const vals =
+                rawData.map(
+                    r=>clean(r[m])
+                );
+
+            if(
+                vals.every(
+                    v=>v===null
+                )
+            ){
+                return;
+            }
+
+            datasets.push({
+
+                label:
+                    cleanLabel(m),
+
+                data:
+                    vals,
+
+                borderWidth:2,
+
+                tension:0.3
+
+            });
+
+        });
+
+        if(!datasets.length)
+            return;
+
+        if(chartInstance)
+            chartInstance.destroy();
+
+        chartInstance = new Chart(
+
+            document.getElementById(
+                "mainCanvas"
+            ),
+
+            {
+
+                type:"line",
+
+                data:{
+                    labels,
+                    datasets
+                },
+
+                options:{
+
+                    responsive:true,
+
+                    interaction:{
+                        mode:'index',
+                        intersect:false
+                    }
+
+                }
+
+            }
+
+        );
+
+    }
+
+    // =====================================
+    // STATS
+    // =====================================
+
+    // function renderStats(){
+
+    //     const metrics =
+    //         getMetrics();
+
+    //     const el =
+    //         document.getElementById(
+    //             "statsBox"
+    //         );
+
+    //     el.innerHTML = "";
+
+    //     metrics.forEach(m=>{
+
+    //         const vals =
+    //             rawData
+    //             .map(
+    //                 r=>clean(r[m])
+    //             )
+    //             .filter(
+    //                 v=>v!==null
+    //             );
+
+    //         if(!vals.length)
+    //             return;
+
+    //         const min =
+    //             Math.min(...vals);
+
+    //         const max =
+    //             Math.max(...vals);
+
+    //         const avg =
+    //             (
+    //                 vals.reduce(
+    //                     (a,b)=>a+b,
+    //                     0
+    //                 ) / vals.length
+    //             ).toFixed(2);
+
+    //         el.innerHTML += `
+
+    //         <div class="stat-box">
+
+    //         <b>
+    //         ${cleanLabel(m)}
+    //         </b>
+
+    //         <hr>
+
+    //         Min : ${min}<br>
+    //         Max : ${max}<br>
+    //         Avg : ${avg}
+
+    //         </div>
+
+    //         `;
+
+    //     });
+
+    // }
+
+    // =====================================
+    // TABLE
+    // =====================================
+
+    function renderTable(){
+
+        const metrics =
+            getMetrics();
+
+        let html =
+            "<table>";
+
+        html +=
+            "<tr><th>Time</th>";
+
+        metrics.forEach(m=>{
+
+            html +=
+                `<th>
+                ${cleanLabel(m)}
+                </th>`;
+
+        });
+
+        html += "</tr>";
+
+        rawData.forEach(r=>{
+
+            html +=
+                `<tr><td>${r.time}</td>`;
+
+            metrics.forEach(m=>{
+
+                html +=
+                    `<td>
+                    ${r[m] ?? "-"}
+                    </td>`;
+
+            });
+
+            html += "</tr>";
+
+        });
+
+        html += "</table>";
+
+        document.getElementById(
+            "tableView"
+        ).innerHTML = html;
+
+    }
+
+    // =====================================
+    // VIEW
+    // =====================================
+
+    function showView(type){
+
+        document.getElementById(
+            "chartView"
+        ).style.display =
+
+            type==="chart"
+            ? "block"
+            : "none";
+
+        document.getElementById(
+            "tableView"
+        ).style.display =
+
+            type==="table"
+            ? "block"
+            : "none";
+
+    }
+
+    // =====================================
+    // LOAD DASHBOARD
+    // =====================================
+
+    function loadDashboard(){
+
+        const device =
+            deviceSelect.value;
+
+        const from =
+            document.getElementById(
+                "fromDate"
+            ).value;
+
+        const to =
+            document.getElementById(
+                "toDate"
+            ).value;
+
+        if(!device){
+
+            alert("Select device");
+
+            return;
+
+        }
+
+        if(!from || !to){
+
+            alert("Select dates");
+
+            return;
+
+        }
+
+        const url =
+
+            `?device=${device}`
+
+            + `&from_date=${from}`
+
+            + `&to_date=${to}`;
+
+        window.location.href = url;
+
+    }
+
+    // =====================================
+    // DOWNLOAD CSV
+    // =====================================
+
+    function downloadCSV(){
+
+        if(!rawData.length){
+
+            alert("No data");
+
+            return;
+
+        }
+
+        document.getElementById(
+            "csvTableData"
+        ).value =
+            JSON.stringify(rawData);
+
+        document.getElementById(
+            "csvColumns"
+        ).value =
+            JSON.stringify(
+                Object.keys(
+                    rawData[0]
+                )
+            );
+
+        document.getElementById(
+            "csvDevice"
+        ).value =
+            deviceSelect.value;
+
+        document.getElementById(
+            "csvDeviceName"
+        ).value =
+            deviceSelect.options[
+                deviceSelect.selectedIndex
+            ].text;
+
+        document.getElementById(
+            "csvCategory"
+        ).value =
+            categorySelect.value;
+
+        document.getElementById(
+            "csvVillage"
+        ).value =
+            villageSelect.value;
+
+        document.getElementById(
+            "csvFrom"
+        ).value =
+            document.getElementById(
+                "fromDate"
+            ).value;
+
+        document.getElementById(
+            "csvTo"
+        ).value =
+            document.getElementById(
+                "toDate"
+            ).value;
+
+        document.getElementById(
+            "csvForm"
+        ).submit();
+
+    }
+
+    // =====================================
+    // EVENTS
+    // =====================================
+
+    categorySelect.addEventListener(
+
+        "change",
+
+        ()=>{
+
+            villageSelect.innerHTML =
+                `<option value="">
+                -- Select Village --
+                </option>`;
+
+            deviceSelect.innerHTML =
+                `<option value="">
+                -- Select Device --
+                </option>`;
+
+            loadVillages();
+
+        }
+
+    );
+
+    villageSelect.addEventListener(
+
+        "change",
+
+        ()=>{
+
+            loadDevices();
+
+        }
+
+    );
+
+    // =====================================
+    // INIT
+    // =====================================
+
+    window.onload = function(){
+
+        // DATES
+
+        if(selectedFrom){
+
+            document.getElementById(
+                "fromDate"
+            ).value = selectedFrom;
+
+        }
+
+        if(selectedTo){
+
+            document.getElementById(
+                "toDate"
+            ).value = selectedTo;
+
+        }
+
+        // RESTORE DEVICE
+
+        if(selectedDevice){
+
+            const meta =
+                deviceMap[
+                    selectedDevice
+                ];
+
+            if(meta){
+
+                categorySelect.value =
+                    meta.category;
+
+                loadVillages();
+
+                villageSelect.value =
+                    meta.village;
+
+                loadDevices();
+
+                deviceSelect.value =
+                    selectedDevice;
+
+            }
+
+        }
+
+        // SHOW VIEW
+
+        showView("chart");
+
+        // RENDER DATA
+
+        if(rawData.length){
+
+            renderMetricSelector();
+
+            renderChart();
+
+            // renderStats();
+
+            renderTable();
+
+        }
+
+    };
+
+    </script>
+
+    <!-- CSV FORM -->
+
+    <form
+        id="csvForm"
+        method="POST"
+        action="{% url 'export_csv' %}"
+        style="display:none;"
+    >
+
+    {% csrf_token %}
+
+    <input type="hidden"
+        name="table_data"
+        id="csvTableData">
+
+    <input type="hidden"
+        name="columns"
+        id="csvColumns">
+
+    <input type="hidden"
+        name="device"
+        id="csvDevice">
+
+    <input type="hidden"
+        name="device_name"
+        id="csvDeviceName">
+
+    <input type="hidden"
+        name="category"
+        id="csvCategory">
+
+    <input type="hidden"
+        name="village"
+        id="csvVillage">
+
+    <input type="hidden"
+        name="from_date"
+        id="csvFrom">
+
+    <input type="hidden"
+        name="to_date"
+        id="csvTo">
+
+    </form>
+
+    </body>
+    </html>
