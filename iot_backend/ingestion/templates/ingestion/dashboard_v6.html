@@ -129,7 +129,7 @@
 
     <div class="header">
 
-    <h2>📊 IoT Dashboard</h2>
+    <h2>📊 IoT Dashboard - </h2>
 
     <div class="controls">
 
@@ -275,7 +275,7 @@
     <div class="card">
 
     <h3 id="title">
-    Select checkboxes to display metrics
+    Select checkboxes to display metrics for SAMBHAV_{{selected_device}}
     </h3>
 
     
@@ -323,6 +323,98 @@
     console.log("RAW DATA:", rawData);
     console.log("DEVICE MAP:", deviceMap);
 
+    // =====================================
+    // CHART RENDER
+    // ====================================
+
+     let chartInstance = null;
+
+    function renderChart(){
+
+        const metrics = Array.from(
+            document.querySelectorAll(
+                '#metricSelector input[type="checkbox"]:checked'
+            )
+        ).map(cb => cb.value);
+
+        if(!metrics.length)
+            return;
+
+        const labels =
+            rawData.map(
+                r=>r.time
+            );
+
+        const datasets = [];
+
+        metrics.forEach(m=>{
+
+            const vals =
+                rawData.map(
+                    r=>clean(r[m])
+                );
+
+            if(
+                vals.every(
+                    v=>v===null
+                )
+            ){
+                return;
+            }
+
+            datasets.push({
+
+                label:
+                    cleanLabel(m),
+
+                data:
+                    vals,
+
+                borderWidth:2,
+
+                tension:0.3
+
+            });
+
+        });
+
+        if(!datasets.length)
+            return;
+
+        if(chartInstance)
+            chartInstance.destroy();
+
+        chartInstance = new Chart(
+
+            document.getElementById(
+                "mainCanvas"
+            ),
+
+            {
+
+                type:"line",
+
+                data:{
+                    labels,
+                    datasets
+                },
+
+                options:{
+
+                    responsive:true,
+
+                    interaction:{
+                        mode:'index',
+                        intersect:false
+                    }
+
+                }
+
+            }
+
+        );
+
+    }
     // =====================================
     // ELEMENTS
     // =====================================
@@ -545,7 +637,8 @@
             l === "rhf" ||
             l === "rhw" ||
             l.endsWith("_rhf") ||
-            l.endsWith("_rhw")
+            l.endsWith("_rhw") ||
+            l.endsWith("water_lev")
         ){
             checkbox.checked = true;
         }
@@ -731,119 +824,33 @@
         if(!rawData.length)
             return [];
 
-        return Object.keys(
-            rawData[0]
-        ).filter(k=>{
+        const metrics = Object.keys(rawData[0]).filter(k => {
 
             return (
-                k !== "time"
-                &&
-                k !== "device_id"
-                &&
-                !k.includes("rssi") 
-                &&
-                !k.includes("battery")
-                &&
+                k !== "time" &&
+                k !== "device_id" &&
+                !k.includes("rssi") &&
+                !k.includes("battery") &&
                 !k.includes("cuml_total_m3")
             );
 
         });
 
-    }
+        // remove duplicate display labels
+        const seen = new Set();
 
-    // =====================================
-    // CHART
-    // =====================================
+        return metrics.filter(metric => {
 
-    let chartInstance = null;
+            const label = cleanLabel(metric);
 
-    function renderChart(){
+            if(seen.has(label))
+                return false;
 
-        const metrics = Array.from(
-            document.querySelectorAll(
-                '#metricSelector input[type="checkbox"]:checked'
-            )
-        ).map(cb => cb.value);
+            seen.add(label);
 
-        if(!metrics.length)
-            return;
-
-        const labels =
-            rawData.map(
-                r=>r.time
-            );
-
-        const datasets = [];
-
-        metrics.forEach(m=>{
-
-            const vals =
-                rawData.map(
-                    r=>clean(r[m])
-                );
-
-            if(
-                vals.every(
-                    v=>v===null
-                )
-            ){
-                return;
-            }
-
-            datasets.push({
-
-                label:
-                    cleanLabel(m),
-
-                data:
-                    vals,
-
-                borderWidth:2,
-
-                tension:0.3
-
-            });
-
+            return true;
         });
-
-        if(!datasets.length)
-            return;
-
-        if(chartInstance)
-            chartInstance.destroy();
-
-        chartInstance = new Chart(
-
-            document.getElementById(
-                "mainCanvas"
-            ),
-
-            {
-
-                type:"line",
-
-                data:{
-                    labels,
-                    datasets
-                },
-
-                options:{
-
-                    responsive:true,
-
-                    interaction:{
-                        mode:'index',
-                        intersect:false
-                    }
-
-                }
-
-            }
-
-        );
-
     }
-
     // =====================================
     // STATS
     // =====================================

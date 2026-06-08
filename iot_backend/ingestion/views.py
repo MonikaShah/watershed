@@ -268,14 +268,25 @@ def get_telemetry(
 
             try:
 
-                ts = pd.to_datetime(
-                    item["ts"],
-                    unit="ms"
-                )
-
+                # ts = pd.to_datetime(
+                #     item["ts"],
+                #     unit="ms"
+                # )
                 raw_value = item["value"]
 
                 parsed = json.loads(raw_value)
+                device_ts = parsed.get("timestamp")
+
+                if not device_ts:
+                    continue
+
+                ts = pd.to_datetime(
+                    device_ts,
+                    unit="s",
+                    utc=True
+                )
+
+                
 
                 if not isinstance(parsed, dict):
                     continue
@@ -307,6 +318,21 @@ def get_telemetry(
                 # =================================
 
                 flat = flatten_json(parsed)
+
+                for k in flat.keys():
+
+                    if (
+                        '"' in k
+                        or '!' in k
+                        or 'levdl' in k
+                        or 'cumd' in k
+                    ):
+
+                        print("\n===================")
+                        print("BAD KEY:", k)
+                        print("RAW JSON:")
+                        print(json.dumps(parsed, indent=2))
+                        print("===================\n")
 
                 # =======================do==========
                 # REMOVE META
@@ -380,7 +406,12 @@ def get_telemetry(
     )
 
     print(df.head())
+    print("TB TS :", item["ts"])
 
+    print(
+        "DEVICE TS :",
+        parsed.get("timestamp")
+    )
     return df
 # ----------------------------
 # Dashboard page
@@ -486,6 +517,10 @@ def dashboard_v5(request):
             df = df.fillna("")
 
             columns = df.columns.tolist()
+
+            print("DF COLUMNS:")
+            for c in df.columns:
+                print(c)
 
             table_data = df.to_dict(
                 orient="records"
