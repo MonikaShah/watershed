@@ -120,7 +120,49 @@
         margin-bottom:20px;
         border-radius:10px;
     }
+    /* ===========================
+    Loading Overlay
+    =========================== */
 
+    #loadingOverlay{
+        position:fixed;
+        inset:0;
+        background:rgba(255,255,255,0.9);
+        display:none;
+        justify-content:center;
+        align-items:center;
+        z-index:9999;
+    }
+
+    .loader-box{
+        background:white;
+        padding:30px 40px;
+        border-radius:12px;
+        box-shadow:0 8px 30px rgba(0,0,0,.15);
+        text-align:center;
+    }
+
+    .spinner{
+        width:60px;
+        height:60px;
+        border:6px solid #e8eef4;
+        border-top:6px solid #2ba0c7;
+        border-radius:50%;
+        animation:spin .8s linear infinite;
+        margin:auto;
+    }
+
+    .loader-text{
+        margin-top:18px;
+        color:#555;
+        font-size:16px;
+        font-weight:600;
+    }
+
+    @keyframes spin{
+        from{transform:rotate(0deg);}
+        to{transform:rotate(360deg);}
+    }
     </style>
 
     </head>
@@ -198,7 +240,48 @@
     </select>
 
     </div>
+<!-- Date Range -->
+ <!-- DATE RANGE -->
 
+    <div>
+
+        <div class="section-title">
+            Date Range
+        </div>
+
+        <select id="datePreset">
+
+            <option value="custom" selected>
+                Custom
+            </option>
+
+            <option value="today">
+                Today
+            </option>
+
+            <option value="yesterday">
+                Yesterday
+            </option>
+
+            <option value="24h">
+                Last 24 Hours
+            </option>
+
+            <option value="7d">
+                Last 7 Days
+            </option>
+
+            <option value="30d">
+                Last 30 Days
+            </option>
+
+            <option value="month">
+                This Month
+            </option>
+
+        </select>
+
+    </div>
     <!-- FROM -->
 
     <div>
@@ -319,6 +402,9 @@
             "device-map"
         ).textContent
     );
+
+    const datePreset =
+    document.getElementById("datePreset");
 
     console.log("RAW DATA:", rawData);
     console.log("DEVICE MAP:", deviceMap);
@@ -638,7 +724,8 @@
             l === "rhw" ||
             l.endsWith("_rhf") ||
             l.endsWith("_rhw") ||
-            l.endsWith("water_lev")
+            // Water Level
+            l.includes("water") && l.includes("lev")
         ){
             checkbox.checked = true;
         }
@@ -647,6 +734,8 @@
             "change",
             renderChart
         );
+
+     
 
         // const wrapper =
         //     document.createElement("label");
@@ -1027,7 +1116,7 @@
             return;
 
         }
-
+            showLoading();
         const url =
 
             `?device=${device}`
@@ -1108,6 +1197,7 @@
             "csvForm"
         ).submit();
 
+        
     }
 
     // =====================================
@@ -1147,6 +1237,100 @@
         }
 
     );
+    datePreset.addEventListener(
+            "change",
+            updateDateRange
+        );
+    document.getElementById("fromDate")
+        .addEventListener("change", () => {
+            datePreset.value = "custom";
+        });
+
+    document.getElementById("toDate")
+        .addEventListener("change", () => {
+            datePreset.value = "custom";
+        });
+    
+
+    function showLoading(message = "Loading dashboard data...") {
+
+        document.querySelector(".loader-text").textContent = message;
+
+        document.getElementById("loadingOverlay").style.display = "flex";
+    }
+
+    function updateDateRange(){
+
+        const preset = datePreset.value;
+
+        const fromInput = document.getElementById("fromDate");
+        const toInput = document.getElementById("toDate");
+
+        const custom = preset === "custom";
+
+        fromInput.disabled = !custom;
+        toInput.disabled = !custom;
+
+        if(custom)
+            return;
+
+        if(preset === "custom")
+            return;
+
+        const today = new Date();
+
+        let from = new Date(today);
+        let to = new Date(today);
+
+        switch(preset){
+
+            case "today":
+                break;
+
+            case "yesterday":
+
+                from.setDate(from.getDate()-1);
+                to.setDate(to.getDate()-1);
+
+                break;
+
+            case "24h":
+
+                from.setDate(from.getDate()-1);
+
+                break;
+
+            case "7d":
+
+                from.setDate(from.getDate()-6);
+
+                break;
+
+            case "30d":
+
+                from.setDate(from.getDate()-29);
+
+                break;
+
+            case "month":
+
+                from = new Date(
+                    today.getFullYear(),
+                    today.getMonth(),
+                    1
+                );
+
+                break;
+
+        }
+
+        document.getElementById("fromDate").value =
+            from.toISOString().split("T")[0];
+
+        document.getElementById("toDate").value =
+            to.toISOString().split("T")[0];
+
+    }
 
     // =====================================
     // INIT
@@ -1266,6 +1450,14 @@
         id="csvTo">
 
     </form>
-
+    <!-- Loading Overlay -->
+        <div id="loadingOverlay">
+            <div class="loader-box">
+                <div class="spinner"></div>
+                <div class="loader-text">
+                    Loading dashboard data...
+                </div>
+            </div>
+        </div>
     </body>
     </html>
