@@ -1,6 +1,8 @@
 from django.shortcuts import render
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from django.core.paginator import Paginator
+from django.utils.dateparse import parse_date
 from django.utils import timezone
 from datetime import timedelta
 import os,json,time
@@ -1013,6 +1015,8 @@ def device_logs(request):
 
     data = [
         {
+            # "time": l.timestamp.strftime("%H:%M:%S"),
+            "date": l.timestamp.strftime("%d %b %Y"),
             "time": l.timestamp.strftime("%H:%M:%S"),
             "device": l.device_id,
             "event": l.event_type,
@@ -1023,14 +1027,57 @@ def device_logs(request):
 
     return JsonResponse(data, safe=False)
 
+# def device_logs_page(request):
+
+#     logs = DeviceEventLog.objects.all().order_by("-timestamp")[:200]
+
+#     print("LOG COUNT:", logs.count())
+
+#     return render(
+#         request,
+#         "ingestion/device_logs.html",
+#         {"logs": logs}
+#     )
+
+
+
 def device_logs_page(request):
 
-    logs = DeviceEventLog.objects.all().order_by("-timestamp")[:200]
+    start_date = request.GET.get("start")
+    end_date = request.GET.get("end")
+    device = request.GET.get("device")
 
-    print("LOG COUNT:", logs.count())
+    logs = DeviceEventLog.objects.all()
+
+    # -------------------------
+    # Date filtering
+    # -------------------------
+    if start_date:
+        logs = logs.filter(timestamp__date__gte=parse_date(start_date))
+
+    if end_date:
+        logs = logs.filter(timestamp__date__lte=parse_date(end_date))
+
+    # -------------------------
+    # Device filter
+    # -------------------------
+    if device:
+        logs = logs.filter(device_id=device)
+
+    logs = logs.order_by("-timestamp")
+
+    # -------------------------
+    # Pagination
+    # -------------------------
+    paginator = Paginator(logs, 50)   # 50 logs per page
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
 
     return render(
         request,
         "ingestion/device_logs.html",
-        {"logs": logs}
+        {
+            "logs": page_obj,
+            "page_obj": page_obj,
+        }
     )

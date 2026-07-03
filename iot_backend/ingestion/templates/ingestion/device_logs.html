@@ -25,33 +25,74 @@ body {
 table {
     width: 100%;
     border-collapse: collapse;
-    background: white;
-    border-radius: 10px;
-    overflow: hidden;
+    table-layout: fixed;   /* IMPORTANT */
 }
 
-th {
-    background: #2563eb;
-    color: white;
-    padding: 12px;
+th, td {
+    text-align: left;
+    vertical-align: middle;
 }
-
-td {
-    padding: 10px;
-    border-bottom: 1px solid #eee;
-}
-
+th:nth-child(1), td:nth-child(1) { width: 120px; }
+th:nth-child(2), td:nth-child(2) { width: 100px; }
+th:nth-child(3), td:nth-child(3) { width: 140px; }
+th:nth-child(4), td:nth-child(4) { width: 120px; }
 .badge {
     padding: 4px 8px;
     border-radius: 6px;
     font-size: 12px;
     color: white;
 }
+.log-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    table-layout: fixed;   /* KEY FIX */
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.log-table th,
+.log-table td {
+    padding: 12px 10px;
+    text-align: left;
+    vertical-align: middle;
+    border-bottom: 1px solid #eee;
+    word-wrap: break-word;
+}
+
+/* Header styling */
+.log-table th {
+    background: #2563eb;
+    color: white;
+    font-weight: 600;
+}
+
+/* Column widths (important for alignment) */
+.log-table th:nth-child(1),
+.log-table td:nth-child(1) { width: 110px; }
+
+.log-table th:nth-child(2),
+.log-table td:nth-child(2) { width: 90px; }
+
+.log-table th:nth-child(3),
+.log-table td:nth-child(3) { width: 140px; }
+
+.log-table th:nth-child(4),
+.log-table td:nth-child(4) { width: 100px; }
+
+.log-table th:nth-child(5),
+.log-table td:nth-child(5) { width: auto; }
 
 .DATA { background: #22c55e; }
 .STATUS { background: #f59e0b; }
 .OTA { background: #8b5cf6; }
 .ERROR { background: #ef4444; }
+
+.container {
+    padding: 20px;
+    max-width: 1400px;
+    margin: auto;
+}
 
 @media(max-width:768px){
     table { font-size: 12px; }
@@ -67,29 +108,66 @@ Device Event Logger
 </div>
 <div id="log-box"></div>
 <div class="container">
+    <form method="GET" style="margin-bottom: 15px; display:flex; gap:10px;">
 
-<table>
-<tr>
-    <th>Time</th>
-    <th>Device</th>
-    <th>Event</th>
-    <th>Message</th>
-</tr>
+        <input type="date" name="start" value="{{ request.GET.start }}">
+        <input type="date" name="end" value="{{ request.GET.end }}">
+    
+        <input type="text" name="device" placeholder="Device ID"
+               value="{{ request.GET.device }}">
+    
+        <button type="submit">Filter</button>
+    
+        <a href="/custom-dashboard/device-logs-ui/">
+            Reset
+        </a>
+    
+    </form>
+    <!-- <select id="deviceFilter"> -->
+        <table class="log-table">
 
-{% for log in logs %}
-<tr>
-    <td>{{ log.timestamp|date:"H:i:s" }}</td>
-    <td>{{ log.device_id }}</td>
-    <td>
-        <span class="badge {{ log.event_type }}">
-            {{ log.event_type }}
-        </span>
-    </td>
-    <td>{{ log.message }}</td>
-</tr>
-{% endfor %}
+            <thead>
+            <tr>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Device</th>
+                <th>Event</th>
+                <th>Message</th>
+            </tr>
+            </thead>
+            
+            <tbody>
+            {% for log in logs %}
+            <tr>
+                <td>{{ log.timestamp|date:"d M Y" }}</td>
+                <td>{{ log.timestamp|date:"H:i:s" }}</td>
+                <td>{{ log.device_id }}</td>
+                <td>
+                    <span class="badge {{ log.event_type }}">
+                        {{ log.event_type }}
+                    </span>
+                </td>
+                <td>{{ log.message }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+            
+            </table>
+            <div style="margin-top:15px;">
 
-</table>
+                {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}">⬅ Prev</a>
+                {% endif %}
+                
+                <span style="margin:0 10px;">
+                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                </span>
+                
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}">Next ➡</a>
+                {% endif %}
+                
+                </div>
 
 </div>
 
