@@ -8,7 +8,7 @@ from .models import DeviceMetadata, DeviceStatus
 from .models import DeviceEventLog
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-
+from ingestion.event_processor import process_device
 
 
 def push_log_ws(data):
@@ -237,29 +237,37 @@ def update_device_status():
         if key not in data:
             continue
 
-        newest = None
+        latest_packet = None
+        latest_ts = 0
 
         for item in data[key]:
 
             try:
 
                 packet = json.loads(item["value"])
+                # print("Device timestamp :", packet.get("timestamp"))
+                # print("TB timestamp     :", item["ts"] // 1000)
+                # print("Current time     :", int(time.time()))
+                # print("---------------------")
 
-                ts = packet.get("timestamp")
+                # ts = packet.get("timestamp")
+                # Use ThingsBoard receive time instead of device timestamp
+                tb_ts = item["ts"] // 1000
 
-                if not ts:
-                    continue
-
-                if newest is None or ts > newest:
-                    newest = ts
+                if tb_ts > latest_ts:
+                    latest_ts = tb_ts
+                    latest_packet = packet
+                    latest_packet["_tb_ts"] = tb_ts
 
             except Exception:
                 continue
 
-        if newest:
-            latest[key] = newest
+        if latest_packet:
+            latest[key] = latest_packet
 
     print("\nLatest devices found:", len(latest))
+    for device, ts in latest.items():
+        print(device, datetime.fromtimestamp(ts, tz=UTC))
 
     # -----------------------------
     # Save into DeviceStatus table
@@ -271,11 +279,20 @@ def update_device_status():
 
         tb_name = f"SAMBHAV_{meta.device_id}"
 
-        ts = latest.get(tb_name)
+        packet = latest.get(tb_name)
 
-        if ts:
+        battery = None
+        rssi = None
+
+        if packet:
+
+            ts = packet["_tb_ts"]
 
             last_seen = datetime.fromtimestamp(ts, tz=UTC)
+
+            battery = packet.get("battery_Volt")
+
+            rssi = packet.get("rssi")
 
             online = (
                 timezone.now() - last_seen
@@ -288,15 +305,29 @@ def update_device_status():
 
             last_seen = None
             online = False
+        old_status = DeviceStatus.objects.filter(device=meta).first()
 
+        old_online = None
+        if old_status:
+            old_online = old_status.online
         DeviceStatus.objects.update_or_create(
             device=meta,
             defaults={
                 "last_seen": last_seen,
                 "online": online,
+                "battery": battery,
+                "rssi": rssi,
             }
         )
-
+        log_device_event(
+            device_id=meta.device_id,
+            event_type="DATA",
+            message="Telemetry received",
+            extra={
+                "battery": battery,
+                "rssi": rssi,
+            }
+        )
         print(
             meta.device_id,
             "->",
@@ -304,15 +335,39 @@ def update_device_status():
             online
         )
 
-        log_device_event(
-            device_id=meta.device_id,
-            event_type="STATUS",
-            message="Device is online" if online else "Device is offline",
-            extra={
-                "last_seen": str(last_seen),
-                "online": online
-            }
-        )
+        # First time we see this device
+        if old_status is None:
+
+            log_device_event(
+                device_id=meta.device_id,
+                event_type="STATUS",
+                message=f"Initial status: {'Online' if online else 'Offline'}",
+                extra={
+                    "last_seen": str(last_seen),
+                    "online": online
+                }
+            )
+
+        # Status changed
+        elif old_online != online:
+
+            log_device_event(
+                device_id=meta.device_id,
+                event_type="STATUS",
+                message=f"Device became {'Online' if online else 'Offline'}",
+                extra={
+                    "last_seen": str(last_seen),
+                    "online": online
+                }
+            )
+        if battery is not None and battery < 11.5:
+
+            log_device_event(
+                device_id=meta.device_id,
+                event_type="ERROR",
+                message=f"Battery Low ({battery}V)",
+                extra={"battery": battery}
+            )
 
     print()
     print("Finished")
