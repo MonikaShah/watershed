@@ -1069,6 +1069,7 @@ def device_logs_page(request):
     # -------------------------
     # Pagination
     # -------------------------
+    print("TOTAL LOGS AFTER FILTER:", logs.count())
     paginator = Paginator(logs, 50)   # 50 logs per page
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
