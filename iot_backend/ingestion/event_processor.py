@@ -54,6 +54,8 @@ def process_device(device_json):
             "rssi": device_json.get("rssi"),
         }
     )
+    battery = device_json.get("battery_Volt")
+    rssi = device_json.get("rssi")
     log_event(
         clean_device,
         "DATA",
