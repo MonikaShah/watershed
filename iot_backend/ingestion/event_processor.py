@@ -5,7 +5,6 @@ from django.utils import timezone
 from ingestion.models import DeviceMetadata, DeviceStatus
 from ingestion.event_logger import log_event
 # from ingestion.services import push_log_ws
-# from ingestion.services import push_log_ws
 
 def process_device(device_json):
     device_name = device_json.get("Device_ID")

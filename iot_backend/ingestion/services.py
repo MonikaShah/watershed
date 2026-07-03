@@ -6,40 +6,40 @@ from django.utils import timezone
 from django.conf import settings
 from .models import DeviceMetadata, DeviceStatus
 from .models import DeviceEventLog
-from asgiref.sync import async_to_sync
-from channels.layers import get_channel_layer
+# from asgiref.sync import async_to_sync
+# from channels.layers import get_channel_layer
 from ingestion.event_processor import process_device
 
 
-def push_log_ws(data):
+# def push_log_ws(data):
 
-    channel_layer = get_channel_layer()
+#     channel_layer = get_channel_layer()
 
-    async_to_sync(channel_layer.group_send)(
-        "logs",
-        {
-            "type": "send_log",
-            "data": data,
-        },
-    )
+#     async_to_sync(channel_layer.group_send)(
+#         "logs",
+#         {
+#             "type": "send_log",
+#             "data": data,
+#         },
+#     )
 
 
-def log_device_event(device_id, event_type, message, extra=None):
+# def log_device_event(device_id, event_type, message, extra=None):
 
-    # Save in database
-    DeviceEventLog.objects.create(
-        device_id=device_id,
-        event_type=event_type,
-        message=message,
-        extra=extra or {},
-    )
+#     # Save in database
+#     DeviceEventLog.objects.create(
+#         device_id=device_id,
+#         event_type=event_type,
+#         message=message,
+#         extra=extra or {},
+#     )
 
-    # Push to websocket
-    push_log_ws({
-        "device_id": device_id,
-        "event_type": event_type,
-        "message": message,
-    })
+#     # Push to websocket
+#     push_log_ws({
+#         "device_id": device_id,
+#         "event_type": event_type,
+#         "message": message,
+#     })
 
 
 
@@ -152,7 +152,7 @@ def get_device_status(token, tb_device_id):
             except Exception:
                 pass
 
-    return 
+    return latest
 
 
 def update_device_status():
@@ -265,111 +265,79 @@ def update_device_status():
         if latest_packet:
             latest[key] = latest_packet
 
-    print("\nLatest devices found:", len(latest))
-    for device, ts in latest.items():
-        print(device, datetime.fromtimestamp(ts, tz=UTC))
-
-    # -----------------------------
-    # Save into DeviceStatus table
-    # -----------------------------
+    print()
+    print("Packets received:", len(latest))
+    print()
 
     online_count = 0
 
-    for meta in DeviceMetadata.objects.all():
+    #
+    # Process packets
+    #
 
-        tb_name = f"SAMBHAV_{meta.device_id}"
+    for packet in latest.values():
 
-        packet = latest.get(tb_name)
+        process_device(packet)
 
-        battery = None
-        rssi = None
+        ts = packet["_tb_ts"]
 
-        if packet:
+        last_seen = datetime.fromtimestamp(ts, tz=UTC)
 
-            ts = packet["_tb_ts"]
+        if (
+            timezone.now() - last_seen
+        ).total_seconds() < 3600:
 
-            last_seen = datetime.fromtimestamp(ts, tz=UTC)
+            online_count += 1
 
-            battery = packet.get("battery_Volt")
+    #
+    # Devices with no telemetry
+    #
 
-            rssi = packet.get("rssi")
+    received = {
+        p["Device_ID"].replace("SAMBHAV_", "")
+        for p in latest.values()
+    }
 
-            online = (
-                timezone.now() - last_seen
-            ).total_seconds() < 3600
+    for meta in DeviceMetadata.objects.exclude(
+        device_id__in=received
+    ):
 
-            if online:
-                online_count += 1
+        old = DeviceStatus.objects.filter(
+            device=meta
+        ).first()
 
-        else:
+        old_online = old.online if old else None
 
-            last_seen = None
-            online = False
-        old_status = DeviceStatus.objects.filter(device=meta).first()
-
-        old_online = None
-        if old_status:
-            old_online = old_status.online
         DeviceStatus.objects.update_or_create(
             device=meta,
             defaults={
-                "last_seen": last_seen,
-                "online": online,
-                "battery": battery,
-                "rssi": rssi,
+                "online": False,
+                "last_seen": None,
             }
-        )
-        log_device_event(
-            device_id=meta.device_id,
-            event_type="DATA",
-            message="Telemetry received",
-            extra={
-                "battery": battery,
-                "rssi": rssi,
-            }
-        )
-        print(
-            meta.device_id,
-            "->",
-            last_seen,
-            online
         )
 
-        # First time we see this device
-        if old_status is None:
+        #
+        # Log only if status changed
+        #
+
+        if old is None:
 
             log_device_event(
                 device_id=meta.device_id,
                 event_type="STATUS",
-                message=f"Initial status: {'Online' if online else 'Offline'}",
-                extra={
-                    "last_seen": str(last_seen),
-                    "online": online
-                }
+                message="Initial status: Offline",
             )
 
-        # Status changed
-        elif old_online != online:
+        elif old_online:
 
             log_device_event(
                 device_id=meta.device_id,
                 event_type="STATUS",
-                message=f"Device became {'Online' if online else 'Offline'}",
-                extra={
-                    "last_seen": str(last_seen),
-                    "online": online
-                }
-            )
-        if battery is not None and battery < 11.5:
-
-            log_device_event(
-                device_id=meta.device_id,
-                event_type="ERROR",
-                message=f"Battery Low ({battery}V)",
-                extra={"battery": battery}
+                message="Device became Offline",
             )
 
     print()
     print("Finished")
-    print("Online:", online_count)
-    print("Total:", DeviceMetadata.objects.count())
+    print("Packets :", len(latest))
+    print("Online  :", online_count)
+    print("Devices :", DeviceMetadata.objects.count())
