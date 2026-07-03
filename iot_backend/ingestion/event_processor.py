@@ -7,6 +7,8 @@ from ingestion.event_logger import log_event
 # from ingestion.services import push_log_ws
 
 def process_device(device_json):
+    print("PROCESS_DEVICE CALLED")
+    print(device_json.get("Device_ID"))
     device_name = device_json.get("Device_ID")
 
     if not device_name:
@@ -58,12 +60,7 @@ def process_device(device_json):
         "Telemetry received"
     )
 
-    push_log_ws({
-        "time": now.strftime("%H:%M:%S"),
-        "device": clean_device,
-        "event": "DATA",
-        "message": "Telemetry received"
-    })
+    
     if old_online is None:
 
         log_event(
@@ -72,12 +69,7 @@ def process_device(device_json):
             f"Device is {'ONLINE' if online else 'OFFLINE'}"
         )
 
-        push_log_ws({
-            "time": now.strftime("%H:%M:%S"),
-            "device": clean_device,
-            "event": "STATUS",
-            "message": f"Device is {'ONLINE' if online else 'OFFLINE'}"
-        })
+        
 
     elif old_online != online:
 
@@ -87,12 +79,7 @@ def process_device(device_json):
             f"Device became {'ONLINE' if online else 'OFFLINE'}"
         )
 
-        push_log_ws({
-            "time": now.strftime("%H:%M:%S"),
-            "device": clean_device,
-            "event": "STATUS",
-            "message": f"Device became {'ONLINE' if online else 'OFFLINE'}"
-        })
+        
 
         battery = device_json.get("battery_Volt")
 
@@ -104,12 +91,7 @@ def process_device(device_json):
             f"Battery Low ({battery}V)"
         )
 
-        push_log_ws({
-            "time": now.strftime("%H:%M:%S"),
-            "device": clean_device,
-            "event": "ERROR",
-            "message": f"Battery Low ({battery}V)"
-        })
+        
 
     rssi = device_json.get("rssi")
 
@@ -121,9 +103,4 @@ def process_device(device_json):
             f"Weak Signal ({rssi})"
         )
 
-        push_log_ws({
-            "time": now.strftime("%H:%M:%S"),
-            "device": clean_device,
-            "event": "ERROR",
-            "message": f"Weak Signal ({rssi})"
-        })
+        
