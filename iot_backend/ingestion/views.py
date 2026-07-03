@@ -1,20 +1,30 @@
 from django.shortcuts import render
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-import os,json
+from django.utils import timezone
+from datetime import timedelta
+import os,json,time
 import requests
+from.models import DeviceMetadata,DeviceStatus,DeviceEventLog
 # from django.db import connection
 import pandas as pd
 from django.http import HttpResponse
 from django.shortcuts import render
 from .models import Device, DeviceMetadata
 from rest_framework.decorators import api_view
+# views.py
+from django.http import JsonResponse
+from django.db import connections
+from django.conf import settings
+from .services import (
+    get_tb_token,
+    get_tb_devices,
+    get_device_status,
+)
 
-# from .utils import fetch_device_data
-
-TB_URL = "https://watershed.mahamaps.com"
-TB_USERNAME = "monikapatira@gmail.com"       # e.g admin@thingsboard.org
-TB_PASSWORD = "Tenant@watershed#"
+TB_URL = settings.TB_URL
+TB_USERNAME = settings.TB_USERNAME
+TB_PASSWORD = settings.TB_PASSWORD
 
 @api_view(['POST'])
 def ingest_data(request):
@@ -39,34 +49,6 @@ def ota(request, device_type):
     return Response({
         "url": f"https://apiwatershed.mahamaps.com/media/ota/{device_type}/{latest}"
     })
-# ----------------------------
-# ThingsBoard helper functions
-# ----------------------------
-def get_tb_token():
-    url = f"{TB_URL}/api/auth/login"
-
-    payload = {
-        "username": TB_USERNAME,
-        "password": TB_PASSWORD
-    }
-
-    r = requests.post(url, json=payload, timeout=10)
-    r.raise_for_status()
-
-    return r.json()["token"]
-
-
-def get_tb_devices(token):
-    url = f"{TB_URL}/api/tenant/deviceInfos?pageSize=100&page=0"
-
-    headers = {
-        "X-Authorization": f"Bearer {token}"
-    }
-
-    r = requests.get(url, headers=headers, timeout=10)
-    r.raise_for_status()
-
-    return r.json()["data"]
 
 
 # def get_telemetry(token, device_id, start_ts, end_ts):
@@ -309,7 +291,20 @@ def get_telemetry(
                     .replace("SAMBHAV_", "")
                     .strip()
                 )
+                device_name = parsed.get("Device_ID", "")
 
+                clean_device = device_name.replace("SAMBHAV_", "").strip()
+                selected_clean = selected_device.replace("SAMBHAV_", "").strip()
+
+                # print("Telemetry Device_ID :", repr(device_name))
+                # print("Clean telemetry     :", repr(clean_device))
+                # print("Selected device     :", repr(selected_clean))
+
+                if clean_device != selected_clean:
+                    # print("SKIPPED")
+                    continue
+
+                # print("MATCHED")
                 if clean_device != selected_clean:
                     continue
 
@@ -318,6 +313,7 @@ def get_telemetry(
                 # =================================
 
                 flat = flatten_json(parsed)
+                # print("FLAT =", flat)
 
                 for k in flat.keys():
 
@@ -383,35 +379,40 @@ def get_telemetry(
     # =====================================
     # FORMAT TIME
     # =====================================
-
     df["time"] = pd.to_datetime(
         df["time"],
         utc=True
-    )
+    ).dt.tz_convert("Asia/Kolkata")
 
-    df["time"] = (
 
-        df["time"]
-        .dt.tz_convert("Asia/Kolkata")
+    # df["time"] = pd.to_datetime(
+    #     df["time"],
+    #     utc=True
+    # )
 
-    )
+    # df["time"] = (
 
-    df["time"] = (
+    #     df["time"]
+    #     .dt.tz_convert("Asia/Kolkata")
 
-        df["time"]
-        .dt.strftime(
-            "%d-%b-%Y %I:%M %p"
-        )
+    # )
 
-    )
+    # df["time"] = (
 
-    print(df.head())
-    print("TB TS :", item["ts"])
+    #     df["time"]
+    #     .dt.strftime(
+    #         "%d-%b-%Y %I:%M %p"
+    #     )
 
-    print(
-        "DEVICE TS :",
-        parsed.get("timestamp")
-    )
+    # )
+
+    # print(df.head())
+    # print("TB TS :", item["ts"])
+
+    # print(
+    #     "DEVICE TS :",
+    #     parsed.get("timestamp")
+    # )
     return df
 # ----------------------------
 # Dashboard page
@@ -422,6 +423,8 @@ def dashboard_v5(request):
     token = get_tb_token()
 
     devices = get_tb_devices(token)
+    # for d in devices:
+    #     print(d["name"], d["id"]["id"])
 
     # DEBUG
     print("\n========= TB DEVICES =========")
@@ -518,9 +521,9 @@ def dashboard_v5(request):
 
             columns = df.columns.tolist()
 
-            print("DF COLUMNS:")
-            for c in df.columns:
-                print(c)
+            # print("DF COLUMNS:")
+            # for c in df.columns:
+            #     print(c)
 
             table_data = df.to_dict(
                 orient="records"
@@ -758,33 +761,276 @@ def dashboard_compare(request):
     )
 
 @api_view(["GET"])
+
 def device_comparison_api(request):
 
-    devices = request.GET.get(
+    selected_devices = request.GET.get(
         "devices",
         ""
-    )
+    ).split(",")
 
     metric = request.GET.get(
         "metric",
         ""
     )
 
+    from_date = request.GET.get(
+        "from_date"
+    )
+
+    to_date = request.GET.get(
+        "to_date"
+    )
+
+    if (
+        not selected_devices
+        or not metric
+        or not from_date
+        or not to_date
+    ):
+        return Response({
+            "labels": [],
+            "datasets": []
+        })
+
+    token = get_tb_token()
+
+    devices = get_tb_devices(token)
+
+    tb_device_id = None
+
+    for d in devices:
+
+        if "SAMBHAV" in d["name"].upper():
+
+            tb_device_id = d["id"]["id"]
+
+            break
+
+    if not tb_device_id:
+
+        return Response({
+            "error": "TB Device not found"
+        })
+
+    start_ts = int(
+
+        pd.Timestamp(from_date)
+        .tz_localize("Asia/Kolkata")
+        .timestamp() * 1000
+
+    )
+
+    end_ts = int(
+
+        (
+            pd.Timestamp(to_date)
+            + pd.Timedelta(days=1)
+        )
+        .tz_localize("Asia/Kolkata")
+        .timestamp() * 1000
+
+    )
+
+    all_times = set()
+
+    device_frames = {}
+
+    # ----------------------------------
+    # FETCH EACH DEVICE
+    # ----------------------------------
+
+    for device in selected_devices:
+
+        df = get_telemetry(
+
+            token=token,
+
+            tb_device_id=tb_device_id,
+
+            selected_device=device,
+
+            start_ts=start_ts,
+
+            end_ts=end_ts
+
+        )
+
+        if df.empty:
+
+            continue
+
+        if metric not in df.columns:
+
+            print(
+                f"{metric} not found in {device}"
+            )
+
+            continue
+
+        device_frames[device] = df
+
+        all_times.update(
+            df["time"].tolist()
+        )
+
+    # ----------------------------------
+    # NO DATA
+    # ----------------------------------
+
+    if not device_frames:
+
+        return Response({
+
+            "labels": [],
+
+            "datasets": []
+
+        })
+
+    labels = sorted(all_times)
+    
+
+    datasets = []
+
+    # ----------------------------------
+    # BUILD CHART DATA
+    # ----------------------------------
+
+    for device, df in device_frames.items():
+
+        lookup = dict(
+
+            zip(
+
+                df["time"],
+
+                pd.to_numeric(
+                    df[metric],
+                    errors="coerce"
+                )
+
+            )
+
+        )
+
+        values = []
+
+        for t in labels:
+
+            v = lookup.get(t)
+
+            if pd.isna(v):
+
+                values.append(None)
+
+            else:
+
+                values.append(
+                    float(v)
+                )
+
+        datasets.append({
+
+            "label": device,
+
+            "data": values,
+
+            "borderWidth": 2,
+
+            "tension": 0.3
+
+        })
+    label_strings = [
+
+        t.strftime(
+            "%d-%b-%Y %I:%M %p"
+        )
+
+        for t in labels
+
+    ]
     return Response({
 
-        "labels": [
-            "10:00",
-            "11:00",
-            "12:00"
-        ],
+        "labels": label_strings,
 
-        "datasets": [
-
-            {
-                "label": devices,
-                "data": [10, 20, 30]
-            }
-
-        ]
+        "datasets": datasets
 
     })
+
+def device_status(request):
+
+    statuses = (
+        DeviceStatus.objects
+        .select_related("device")
+        .order_by("device__category", "device__village")
+    )
+
+    water = []
+    weather = []
+
+    online_count = 0
+
+    for s in statuses:
+
+        row = {
+            "device_id": s.device.device_id,
+            "device_name": s.device.device_name,
+            "village": s.device.village,
+            "district": s.device.district,
+            "category": s.device.category,
+            "last_seen": s.last_seen,
+            "online": s.online,
+        }
+
+        if s.online:
+            online_count += 1
+
+        if s.device.category == "water_level":
+            water.append(row)
+
+        elif s.device.category == "weather_station":
+            weather.append(row)
+
+    return render(
+        request,
+        "ingestion/device_status.html",
+        {
+            "water": water,
+            "weather": weather,
+            "water_count": len(water),
+            "weather_count": len(weather),
+            "total_count": len(water) + len(weather),
+            "online_count": online_count,
+            "offline_count": len(water) + len(weather) - online_count,
+        },
+    )
+
+
+def device_logs(request):
+
+    logs = DeviceEventLog.objects.all()[:200]
+
+    data = [
+        {
+            "time": l.timestamp.strftime("%H:%M:%S"),
+            "device": l.device_id,
+            "event": l.event_type,
+            "message": l.message,
+        }
+        for l in logs
+    ]
+
+    return JsonResponse(data, safe=False)
+
+def device_logs_page(request):
+
+    logs = DeviceEventLog.objects.all().order_by("-timestamp")[:200]
+
+    print("LOG COUNT:", logs.count())
+
+    return render(
+        request,
+        "ingestion/device_logs.html",
+        {"logs": logs}
+    )

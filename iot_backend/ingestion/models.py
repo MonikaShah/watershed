@@ -81,3 +81,63 @@ class DeviceMetadata(models.Model):
             return f"{self.device_name} ({self.device_id})"
 
         return self.device_id
+    
+
+class DeviceStatus(models.Model):
+
+    device = models.OneToOneField(
+        DeviceMetadata,
+        on_delete=models.CASCADE,
+        related_name="status"
+    )
+
+    last_seen = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+
+    online = models.BooleanField(
+        default=False
+    )
+
+    battery = models.FloatField(
+        null=True,
+        blank=True
+    )
+
+    rssi = models.IntegerField(
+        null=True,
+        blank=True
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True
+    )
+
+    def __str__(self):
+        return self.device.device_id
+    
+
+class DeviceEventLog(models.Model):
+
+    EVENT_TYPES = (
+        ("DATA", "Data"),
+        ("STATUS", "Status"),
+        ("OTA", "OTA"),
+        ("ERROR", "Error"),
+    )
+
+    device_id = models.CharField(max_length=50)
+    event_type = models.CharField(max_length=20, choices=EVENT_TYPES)
+
+    message = models.TextField()
+
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    extra = models.JSONField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-timestamp"]
+
+    def __str__(self):
+        return f"{self.device_id} - {self.event_type}"

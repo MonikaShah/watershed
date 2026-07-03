@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Device Event Logger</title>
+
+<style>
+
+body {
+    font-family: Arial;
+    background: #f4f6fb;
+    margin: 0;
+}
+
+.header {
+    background: #1e293b;
+    color: white;
+    padding: 15px;
+    font-size: 18px;
+}
+
+.container {
+    padding: 20px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+th {
+    background: #2563eb;
+    color: white;
+    padding: 12px;
+}
+
+td {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.badge {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: white;
+}
+
+.DATA { background: #22c55e; }
+.STATUS { background: #f59e0b; }
+.OTA { background: #8b5cf6; }
+.ERROR { background: #ef4444; }
+
+@media(max-width:768px){
+    table { font-size: 12px; }
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="header">
+Device Event Logger
+</div>
+<div id="log-box"></div>
+<div class="container">
+
+<table>
+<tr>
+    <th>Time</th>
+    <th>Device</th>
+    <th>Event</th>
+    <th>Message</th>
+</tr>
+
+{% for log in logs %}
+<tr>
+    <td>{{ log.timestamp|date:"H:i:s" }}</td>
+    <td>{{ log.device_id }}</td>
+    <td>
+        <span class="badge {{ log.event_type }}">
+            {{ log.event_type }}
+        </span>
+    </td>
+    <td>{{ log.message }}</td>
+</tr>
+{% endfor %}
+
+</table>
+
+</div>
+
+<script>
+const socket = new WebSocket("ws://127.0.0.1:8000/ws/logs/");
+
+socket.onmessage = function(event) {
+    const data = JSON.parse(event.data);
+    console.log("LOG:", data);
+
+    // Example: append to page
+    const logBox = document.getElementById("log-box");
+    if (logBox) {
+        const div = document.createElement("div");
+        div.innerText = `${data.device_id} - ${data.message}`;
+        logBox.appendChild(div);
+    }
+};
+</script>
+
+</body>
+</html>

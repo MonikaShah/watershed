@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-t3o*a(t=$!d4moza=5mey@=mg(u-=yrz*m$jv!gfaxyuou&+w@'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = [config('ALLOWED_HOST_1'), config('ALLOWED_HOST_2'), config('ALLOWED_HOST_3'),'localhost',
     '127.0.0.1']
@@ -43,10 +43,26 @@ INSTALLED_APPS = [
     'corsheaders',
     'django.contrib.gis',
     'django_extensions',
+    'channels',
     
 ]
+ASGI_APPLICATION = "config.asgi.application"
+# =========================
+# CHANNEL LAYERS (WebSocket)
+# =========================
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}
+
 
 MIDDLEWARE = [
+
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -85,7 +101,17 @@ DATABASES = {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     }
+    # },
+    # 'thingsboard': {
+    #     'ENGINE': config('DB_ENGINE'),
+    #     'NAME': config('DB_NAME'),
+    #     'USER': config('DB_USER'),
+    #     'PASSWORD': config('DB_PASSWORD'),
+    #     'HOST': config('DB_HOST'),
+    #     'PORT': config('DB_PORT'),
+    # }
 }
+
 # DATABASES = {
 #     'default': {
 #         'ENGINE': config('DB_ENGINE'),
@@ -98,8 +124,19 @@ DATABASES = {
 #             'options': '-c search_path=public'
 #     }
 # }
+# 'thingsboard': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'thingsboard',
+#         'USER': 'thingsboard',
+#         'PASSWORD': 'YOUR_PASSWORD',
+#         'HOST': '127.0.0.1',
+#         'PORT': '5433',
+#     }
 # }
 
+TB_URL = config("TB_URL")
+TB_USERNAME = config("TB_USERNAME")
+TB_PASSWORD = config("TB_PASSWORD")
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
