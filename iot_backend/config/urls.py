@@ -22,8 +22,8 @@ def home(request):
     return HttpResponse("API is running")
 
 urlpatterns = [
-    # path('', home),
-    path('', main_portal, name='home'),
+    path('', home),
+    # path('', main_portal, name='home'),
     path('api/custom/ingest/', ingest_data, name='ingest'),
     path('api/custom/ota/<str:device_type>/', ota, name='ota'),
     path('admin/', admin.site.urls),
