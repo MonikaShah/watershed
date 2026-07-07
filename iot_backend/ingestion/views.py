@@ -28,6 +28,9 @@ TB_URL = settings.TB_URL
 TB_USERNAME = settings.TB_USERNAME
 TB_PASSWORD = settings.TB_PASSWORD
 
+def main_portal(request):
+    return render(request, "ingestion/main_portal.html")
+
 @api_view(['POST'])
 def ingest_data(request):
     print(request.data)

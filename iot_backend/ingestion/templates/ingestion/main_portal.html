@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Living Lab Portal</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    font-family:"Segoe UI",Arial,sans-serif;
+    background:#0f172a;
+    color:#fff;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:25px;
+}
+
+.container{
+    width:100%;
+    max-width:1000px;
+}
+
+.header{
+    text-align:center;
+    margin-bottom:40px;
+}
+
+.header h1{
+    font-size:40px;
+    margin-bottom:10px;
+}
+
+.header p{
+    color:#94a3b8;
+    font-size:17px;
+}
+
+.grid{
+
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+    gap:22px;
+
+}
+
+.card{
+
+    background:#1e293b;
+    border-radius:16px;
+    padding:35px 25px;
+    text-decoration:none;
+    color:white;
+    transition:.25s;
+    border:1px solid rgba(255,255,255,.08);
+
+}
+
+.card:hover{
+
+    transform:translateY(-6px);
+    box-shadow:0 20px 40px rgba(0,0,0,.35);
+
+}
+
+.icon{
+
+    font-size:50px;
+    margin-bottom:20px;
+
+}
+
+.title{
+
+    font-size:22px;
+    font-weight:700;
+    margin-bottom:10px;
+
+}
+
+.desc{
+
+    color:#cbd5e1;
+    line-height:1.6;
+    font-size:15px;
+
+}
+
+.tb{
+    border-top:5px solid #8b5cf6;
+}
+
+.dashboard{
+    border-top:5px solid #3b82f6;
+}
+
+.status{
+    border-top:5px solid #06b6d4;
+}
+
+.logs{
+    border-top:5px solid #f97316;
+}
+
+.admin{
+    border-top:5px solid #22c55e;
+}
+
+.footer{
+
+    margin-top:35px;
+    text-align:center;
+    color:#64748b;
+    font-size:14px;
+
+}
+
+@media(max-width:700px){
+
+.header h1{
+    font-size:30px;
+}
+
+.header p{
+    font-size:15px;
+}
+
+.card{
+
+    padding:25px;
+
+}
+
+.icon{
+
+    font-size:42px;
+
+}
+
+.title{
+
+    font-size:20px;
+
+}
+
+}
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="header">
+
+<h1>🌐 Living Lab Portal</h1>
+
+<p>
+Centralized access to dashboards, monitoring and administration.
+</p>
+
+</div>
+
+<div class="grid">
+
+<a class="card tb" href="https://watershed.mahamaps.com" target="_blank">
+
+<div class="icon">📊</div>
+
+<div class="title">ThingsBoard</div>
+
+<div class="desc">
+View live telemetry, alarms, entities and ThingsBoard dashboards.
+</div>
+
+</a>
+
+
+<a class="card dashboard" href="{% url 'dashboard' %}">
+
+<div class="icon">📈</div>
+
+<div class="title">Custom Dashboard</div>
+
+<div class="desc">
+Interactive analytics, charts, filters and reports for Living Lab devices.
+</div>
+
+</a>
+
+
+<a class="card status" href="{% url 'device_status' %}">
+
+<div class="icon">📡</div>
+
+<div class="title">Device Status</div>
+
+<div class="desc">
+Monitor online/offline status, latest telemetry and connectivity health.
+</div>
+
+</a>
+
+
+<a class="card logs" href="{% url 'device_logs' %}">
+
+<div class="icon">📝</div>
+
+<div class="title">Device Logs</div>
+
+<div class="desc">
+Browse historical telemetry, events and communication logs.
+</div>
+
+</a>
+
+
+<a class="card admin" href="{% url 'admin:index' %}">
+
+<div class="icon">⚙️</div>
+
+<div class="title">Administration</div>
+
+<div class="desc">
+Manage users, devices, permissions and backend configuration.
+</div>
+
+</a>
+
+</div>
+
+<div class="footer">
+
+Living Lab IoT Platform. © C-TARA, IIT-Bombay. All rights reserved.
+
+</div>
+
+</div>
+
+</body>
+
+</html>
