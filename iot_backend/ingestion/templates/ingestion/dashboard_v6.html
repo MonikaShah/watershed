@@ -18,28 +18,50 @@
     }
 
     .header{
-        background:#fff;
-        padding:15px;
-        box-shadow:0 2px 5px rgba(0,0,0,0.1);
+        background:#ffffff;
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        padding:18px 30px;
+        border-bottom:1px solid #dbe3ec;
+        box-shadow:0 2px 8px rgba(0,0,0,.05);
     }
 
-    .controls{
-        display:flex;
-        gap:12px;
-        flex-wrap:wrap;
-        align-items:end;
+    .header-left h1{
+        margin:0;
+        font-size:26px;
+        font-weight:600;
+        color:#1f2937;
     }
+
+    .header-left p{
+        margin-top:6px;
+        color:#6b7280;
+        font-size:14px;
+    }
+
+    .header-right{
+        display:flex;
+        gap:10px;
+    }
+    
 
     .section-title{
         font-weight:bold;
         margin-bottom:5px;
     }
 
-    select,input{
-        padding:8px;
-        border-radius:6px;
-        border:1px solid #ddd;
-        min-width:200px;
+    select,input,button{
+
+            width:100%;
+
+            box-sizing:border-box;
+
+    }
+    .device-actions button{
+
+        width:auto;
+
     }
 
     button{
@@ -72,12 +94,15 @@
         text-align:center;
     } */
     #metricSelector{
-        display:flex;
-        flex-wrap:wrap;
-        gap:15px 25px;
-        align-items:center;
-        margin-bottom:20px;
-    }
+
+    display:grid;
+
+    grid-template-columns:
+        repeat(auto-fit,minmax(180px,1fr));
+
+    gap:10px;
+
+}
 
     #metricSelector label{
         display:flex;
@@ -158,234 +183,896 @@
         font-size:16px;
         font-weight:600;
     }
+    .tab-btn{
 
+        background:white;
+
+        color:#4b5563;
+
+        border:1px solid #d1d5db;
+
+        padding:10px 20px;
+
+        border-radius:8px;
+
+        font-size:14px;
+
+        font-weight:500;
+
+        transition:.25s;
+
+    }
+
+    .tab-btn:hover{
+
+        background:#f3f4f6;
+
+    }
+
+    .tab-btn.active{
+
+        background:#2563eb;
+
+        color:white;
+
+        border-color:#2563eb;
+
+    }
+    #comparisonChart{
+
+        height:450px !important;
+
+    }
+    /* ===========================
+    Device Selection
+    =========================== */
+
+    #deviceList{
+        display:grid;
+        grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+        gap:10px;
+        margin-top:15px;
+    }
+
+    #deviceList label{
+        display:flex;
+        align-items:center;
+        gap:10px;
+        padding:10px 14px;
+        border:1px solid #ddd;
+        border-radius:8px;
+        background:#fafafa;
+        cursor:pointer;
+    }
+
+    #deviceList label:hover{
+        background:#eef5ff;
+    }
+
+    .device-id{
+        color:#666;
+        font-size:13px;
+    }
+
+    /* ===========================
+    Comparison Charts
+    =========================== */
+
+    #comparisonContainer{
+
+        display:flex;
+
+        gap:20px;
+
+        align-items:stretch;
+
+        width:100%;
+
+        }
+
+        .compare-panel{
+
+            flex:1;
+
+            background:white;
+
+            border:1px solid #ddd;
+
+            border-radius:10px;
+
+            padding:15px;
+
+            min-height:520px;
+
+            overflow:hidden;
+
+        }
+
+    .compare-panel canvas{
+        width:100% !important;
+        height:450px !important;
+    }
+
+    .no-data-box{
+        height:450px;
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        text-align:center;
+        border:2px dashed #f3b5b5;
+        border-radius:10px;
+        background:#fff;
+        color:#d9534f;
+        font-size:18px;
+        font-weight:bold;
+    }
+
+    .no-data-box small{
+        display:block;
+        margin-top:10px;
+        color:#666;
+        font-size:15px;
+    }
     @keyframes spin{
         from{transform:rotate(0deg);}
         to{transform:rotate(360deg);}
     }
+@media (max-width:768px){
+
+    #mainCanvas{
+        height:320px !important;
+    }
+
+    h2{
+        font-size:22px;
+    }
+
+    h3{
+        font-size:18px;
+    }
+
+    .loader-box{
+        width:85%;
+    }
+
+}
+
+    /* ==========================
+    Top Header
+    ========================== */
+
+    .topbar{
+        background:#1f3c88;
+        color:#fff;
+        padding:18px 35px;
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        box-shadow:0 2px 10px rgba(0,0,0,.12);
+    }
+
+    .topbar h2{
+        margin:0;
+        font-size:24px;
+        font-weight:600;
+    }
+
+    .subtitle{
+        font-size:14px;
+        opacity:.9;
+    }
+
+    /* ==========================
+    Filter Card
+    ========================== */
+
+    .filter-card{
+        background:white;
+        margin:25px;
+        padding:25px;
+        border-radius:12px;
+        box-shadow:0 4px 14px rgba(0,0,0,.08);
+    }
+
+    .filter-title{
+        font-size:18px;
+        font-weight:600;
+        margin-bottom:20px;
+        color:#1f3c88;
+    }
+
+    .controls{
+        display:grid;
+        grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+        gap:18px;
+    }
+
+    .control-group{
+        display:flex;
+        flex-direction:column;
+    }
+
+    .control-group label{
+        margin-bottom:8px;
+        font-weight:600;
+        color:#555;
+        font-size:14px;
+    }
+
+    .control-group select,
+    .control-group input{
+
+        height:42px;
+        border:1px solid #d5dce5;
+        border-radius:8px;
+        padding:0 12px;
+        font-size:14px;
+        background:white;
+    }
+
+    .control-group select:focus,
+    .control-group input:focus{
+
+        outline:none;
+        border-color:#1f3c88;
+    }
+
+    .load-btn{
+
+        background:#1f3c88;
+        color:white;
+        border:none;
+        border-radius:8px;
+        height:42px;
+        margin-top:29px;
+        font-weight:600;
+        cursor:pointer;
+        transition:.25s;
+    }
+
+    .load-btn:hover{
+
+        background:#17306f;
+    }
+
+    h2{
+
+        font-size:22px;
+
+    }
+
+    h3{
+
+        font-size:18px;
+
+    }
+
+    .loader-box{
+
+        width:85%;
+
+    }
+    /* ==========================================
+    COMPARE DASHBOARD
+    ========================================== */
+
+    #deviceList{
+
+        display:grid;
+
+        grid-template-columns:
+            repeat(auto-fill,minmax(260px,1fr));
+
+        gap:15px;
+
+        margin-top:15px;
+
+    }
+
+    .device-item{
+
+        display:flex;
+
+        align-items:center;
+
+        gap:12px;
+
+        padding:14px;
+
+        border:1px solid #dbe4f0;
+
+        border-radius:10px;
+
+        background:#fff;
+
+        cursor:pointer;
+
+        transition:.2s;
+
+    }
+
+    .device-item:hover{
+
+        background:#f5f9ff;
+
+        border-color:#3b82f6;
+
+    }
+
+    .device-item input{
+
+        transform:scale(1.2);
+
+    }
+
+    .device-actions{
+
+        display:flex;
+
+        justify-content:flex-end;
+
+        gap:10px;
+
+        margin-bottom:15px;
+
+    }
+
+    .device-actions button{
+
+        padding:8px 18px;
+
+        border:none;
+
+        border-radius:6px;
+
+        background:#2563eb;
+
+        color:#fff;
+
+        cursor:pointer;
+
+    }
+
+    .device-actions button:hover{
+
+        background:#1d4ed8;
+
+    }
+
+    #comparisonChartContainer{
+
+        position:relative;
+
+        width:100%;
+
+        height:500px;
+
+    }
+
+    #comparisonChart{
+
+        width:100% !important;
+
+        height:500px !important;
+
+    }
+
+    #compareNoData{
+
+        padding:70px;
+
+        text-align:center;
+
+    }
+
+    .no-data-box{
+
+        background:#fff8dc;
+
+        border:1px solid #f5d76e;
+
+        border-radius:10px;
+
+        padding:40px;
+
+        font-size:18px;
+
+    }
+
+    .no-data-box strong{
+
+        font-size:22px;
+
+    }
+    #loadingOverlay{
+
+        position:fixed;
+
+        inset:0;
+
+        display:none;
+
+        justify-content:center;
+
+        align-items:center;
+
+        background:rgba(255,255,255,.65);
+
+        z-index:99999;
+
+        backdrop-filter:blur(2px);
+
+        }
+
+        .loader-box{
+
+        background:white;
+
+        padding:30px 40px;
+
+        border-radius:12px;
+
+        box-shadow:0 10px 25px rgba(0,0,0,.15);
+
+        text-align:center;
+
+        }
+
+        .spinner{
+
+        width:45px;
+
+        height:45px;
+
+        margin:auto;
+
+        border:5px solid #ddd;
+
+        border-top:5px solid #2563eb;
+
+        border-radius:50%;
+
+        animation:spin .8s linear infinite;
+
+        }
+
+        .loader-text{
+
+        margin-top:18px;
+
+        font-weight:bold;
+
+        }
+
+        @keyframes spin{
+
+        from{
+            transform:rotate(0deg);
+        }
+
+        to{
+            transform:rotate(360deg);
+        }
+
+        }
     </style>
 
     </head>
 
     <body>
 
-    <div class="header">
+        <div class="header">
 
-    <h2>📊 IoT Dashboard - </h2>
-
-    <div class="controls">
-
-    <!-- CATEGORY -->
-
-    <div>
-
-    <div class="section-title">
-    Category
-    </div>
-
-    <select id="categorySelect">
-
-    <option value="">
-    -- Select Category --
-    </option>
-
-    <option value="flow_meter">
-    🌊 Flow Meter
-    </option>
-
-    <option value="weather_station">
-    🌦 Weather Station
-    </option>
-
-    <option value="water_level">
-    💧 Water Level Detector
-    </option>
-
-    </select>
-
-    </div>
-
-    <!-- VILLAGE -->
-
-    <div>
-
-    <div class="section-title">
-    Village
-    </div>
-
-    <select id="villageSelect">
-
-    <option value="">
-    -- Select Village --
-    </option>
-
-    </select>
-
-    </div>
-
-    <!-- DEVICE -->
-
-    <div>
-
-    <div class="section-title">
-    Device
-    </div>
-
-    <select id="deviceSelect">
-
-    <option value="">
-    -- Select Device --
-    </option>
-
-    </select>
-
-    </div>
-<!-- Date Range -->
- <!-- DATE RANGE -->
-
-    <div>
-
-        <div class="section-title">
-            Date Range
+            <div class="header-left">
+                <h1>Living Lab Monitoring Dashboard</h1>
+                <p>Real-time monitoring and historical telemetry analytics</p>
+            </div>
+        
+            <div class="header-right">
+        
+                <button class="tab-btn active"
+                        onclick="openTab('single', this)">
+                    Single Device
+                </button>
+        
+                <button class="tab-btn"
+                        onclick="openTab('compare', this)">
+                    Device Comparison
+                </button>
+        
+            </div>
+        
         </div>
+    <div id="singleTab">
+        <h2>📊 IoT Dashboard  </h2>
 
-        <select id="datePreset">
+        <div class="filter-card">
 
-            <option value="custom" selected>
-                Custom
-            </option>
+            <div class="filter-title">
+                Dashboard Filters
+            </div>
+        
+            <div class="controls">
+        
+                <!-- Category -->
+                <div class="control-group">
+                    <label>Category</label>
+                    <select id="categorySelect">
+                        <option value="">-- Select Category --</option>
+                        <option value="flow_meter">🌊 Flow Meter</option>
+                        <option value="weather_station">🌦 Weather Station</option>
+                        <option value="water_level">💧 Water Level Detector</option>
+                    </select>
+                </div>
+        
+                <!-- Village -->
+                <div class="control-group">
+                    <label>Village</label>
+                    <select id="villageSelect">
+                        <option value="">-- Select Village --</option>
+                    </select>
+                </div>
+        
+                <!-- Device -->
+                <div class="control-group">
+                    <label>Device</label>
+                    <select id="deviceSelect">
+                        <option value="">-- Select Device --</option>
+                    </select>
+                </div>
+        
+                <!-- Date Range -->
+                <div class="control-group">
+                    <label>Date Range</label>
+                    <select id="datePreset">
+                        <option value="custom" selected>Custom</option>
+                        <option value="today">Today</option>
+                        <option value="yesterday">Yesterday</option>
+                        <option value="24h">Last 24 Hours</option>
+                        <option value="7d">Last 7 Days</option>
+                        <option value="30d">Last 30 Days</option>
+                        <option value="month">This Month</option>
+                    </select>
+                </div>
+        
+                <!-- From -->
+                <div class="control-group">
+                    <label>From Date</label>
+                    <input type="date" id="fromDate">
+                </div>
+        
+                <!-- To -->
+                <div class="control-group">
+                    <label>To Date</label>
+                    <input type="date" id="toDate">
+                </div>
+        
+                <!-- Load Button -->
+                <div class="control-group">
+                    <button
+                        class="load-btn"
+                        type="button"
+                        onclick="loadDashboard()">
+                        Load Dashboard
+                    </button>
+                </div>
+        
+            </div>
+        
+        </div>
+        
+        
 
-            <option value="today">
-                Today
-            </option>
+        <!-- VIEW -->
 
-            <option value="yesterday">
-                Yesterday
-            </option>
+        <!-- <div>
 
-            <option value="24h">
-                Last 24 Hours
-            </option>
+        <button type="button"
+                onclick="showView('chart')">
 
-            <option value="7d">
-                Last 7 Days
-            </option>
+        📈 Chart
 
-            <option value="30d">
-                Last 30 Days
-            </option>
+        </button> -->
 
-            <option value="month">
-                This Month
-            </option>
+        <!-- <button type="button"
+                onclick="showView('table')">
 
-        </select>
+        📋 Table
 
-    </div>
-    <!-- FROM -->
+        </button>
 
-    <div>
+        <button type="button"
+                onclick="downloadCSV()">
 
-    <div class="section-title">
-    From Date
-    </div>
+        ⬇ Download CSV
 
-    <input type="date" id="fromDate">
+        </button> -->
+        <!-- <button type="button"
+                onclick="Device()">
 
-    </div>
+        Device Comparision
 
-    <!-- TO -->
+        </button> -->
+        <!-- </div> -->
 
-    <div>
+       
 
-    <div class="section-title">
-    To Date
-    </div>
+        
 
-    <input type="date" id="toDate">
+        <div class="card">
 
-    </div>
+            <h3 id="title">
+                {% if selected_device %}
+                Telemetry Data for SAMBHAV_{{ selected_device }}
+                {% else %}
+                Select a device to view telemetry
+                {% endif %}
+                </h3>
 
-    <!-- LOAD -->
+            
+            <div >
+                
+            </div>
+            <div id="deviceInfo"></div>
+            <div id="noDataMessage"
+                style="display:none;
+                        padding:20px;
+                        margin-bottom:15px;
+                        background:#fff3cd;
+                        border:1px solid #ffeeba;
+                        color:#856404;
+                        border-radius:8px;
+                        text-align:center;
+                        font-weight:bold;">
+                No data found for the selected date range.
+            </div>
+                <div id="chartView">
+                    <div id="metricSelector"style="margin-bottom:15px;">
+                    </div>
+                    <canvas id="mainCanvas"></canvas>
 
-    <div>
+                </div>
 
-    <button type="button"
-            onclick="loadDashboard()">
+                <div id="tableView"
+                    style="display:none;"
+                    class="table-wrap">
+                </div>
 
-    Load
+            </div>
 
-    </button>
+            {{ table_data|json_script:"table-data" }}
+            {{ device_map|json_script:"device-map" }}
+        </div>
+        <!-- ==========================================
+        DEVICE COMPARISON TAB
+        =========================================== -->
+        
+        <div id="compareTab" style="display:none;">
+        
+            <h2>📊 Device Comparison Dashboard</h2>
+        
+            <!-- ===========================
+            FILTERS
+            ============================ -->
+        
+            <div class="filter-card">
+        
+                <div class="filter-title">
+                    Comparison Filters
+                </div>
+        
+                <div class="controls">
+        
+                    <!-- Category -->
+        
+                    <div class="control-group">
+        
+                        <label>Category</label>
+        
+                        <select id="comparecategorySelect">
+        
+                            <option value="">-- Select Category --</option>
+        
+                            <option value="weather_station">
+                                🌦 Weather Station
+                            </option>
+        
+                            <option value="water_level">
+                                💧 Water Level
+                            </option>
+        
+                            <option value="flow_meter">
+                                🌊 Flow Meter
+                            </option>
+        
+                        </select>
+        
+                    </div>
+        
+                    <!-- Village -->
+        
+                    <div class="control-group">
+        
+                        <label>Village</label>
+        
+                        <select id="comparevillageSelect">
+        
+                            <option value="">All Villages</option>
+        
+                        </select>
+        
+                    </div>
+        
+                    <!-- Metric -->
+        
+                    <div class="control-group">
+        
+                        <label>Metric</label>
+        
+                        <select id="comparemetricSelect">
+        
+                            <option value="">Select Metric</option>
+        
+                        </select>
+        
+                    </div>
+        
+                    <!-- From -->
+        
+                    <div class="control-group">
+        
+                        <label>From Date</label>
+        
+                        <input
+                            type="date"
+                            id="comparefromDate">
+        
+                    </div>
+        
+                    <!-- To -->
+        
+                    <div class="control-group">
+        
+                        <label>To Date</label>
+        
+                        <input
+                            type="date"
+                            id="comparetoDate">
+        
+                    </div>
+        
+                    <!-- Compare Button -->
+        
+                    <div class="control-group">
+        
+                        <button
+                            class="load-btn"
+                            type="button"
+                            onclick="compareDevices()">
+        
+                            Compare Devices
+        
+                        </button>
+        
+                    </div>
+        
+                </div>
+        
+            </div>
+        
+            <!-- ===========================
+            DEVICE SELECTION
+            ============================ -->
+        
+            <div class="card">
+        
+                <div class="device-actions">
+        
+                    <button
+                        type="button"
+                        onclick="selectAllDevices()">
+        
+                        Select All
+        
+                    </button>
+        
+                    <button
+                        type="button"
+                        onclick="clearDevices()">
+        
+                        Clear
+        
+                    </button>
+        
+                </div>
+        
+                <h3>
+        
+                    Select Devices
+        
+                </h3>
+        
+                <div id="deviceList">
+        
+                    <p style="color:#666;">
+        
+                        Please select a category to view devices.
+        
+                    </p>
+        
+                </div>
+        
+            </div>
+        
+            <!-- ===========================
+            RESULT CARD
+            ============================ -->
+        
+            <div
+                id="comparisonResultCard"
+                class="card"
+                style="display:none;">
+        
+                <h3>
+        
+                    Device Comparison
+        
+                </h3>
+        
+                <!-- Chart -->
+        
+                <div
+                    id="comparisonChartContainer">
+        
+                    <canvas
+                        id="comparisonChart">
+        
+                    </canvas>
+        
+                </div>
+        
+                <!-- No Data -->
+        
+                <div
+                    id="compareNoData"
+                    style="display:none;">
+        
+                    <div class="no-data-box">
+        
+                        <div style="font-size:50px;">
+                            📉
+                        </div>
+        
+                        <br>
+        
+                        <strong>
+        
+                            No Data Available
+        
+                        </strong>
+        
+                        <br><br>
+        
+                        <span id="noDataDevice"></span>
+        
+                        <br><br>
+        
+                        <small>
+        
+                            No telemetry data found for the selected date range.
+        
+                        </small>
+        
+                    </div>
+        
+                </div>
+        
+            </div>
+        
+        </div>
+     
 
-    </div>
-
-    <!-- VIEW -->
-
-    <div>
-
-    <button type="button"
-            onclick="showView('chart')">
-
-    📈 Chart
-
-    </button>
-
-    <!-- <button type="button"
-            onclick="showView('table')">
-
-    📋 Table
-
-    </button>
-
-    <button type="button"
-            onclick="downloadCSV()">
-
-    ⬇ Download CSV
-
-    </button> -->
-    <!-- <button type="button"
-            onclick="Device()">
-
-    Device Comparision
-
-    </button> -->
-    </div>
-
-    </div>
-
-    </div>
-
-    <div class="card">
-
-    <h3 id="title">
-    Select checkboxes to display metrics for SAMBHAV_{{selected_device}}
-    </h3>
-
-    
-    <div ></div>
-<div id="deviceInfo"></div>
-    <div id="chartView">
-
-    <!-- <div class="stats"
-        id="statsBox"></div> -->
-
-    <div id="metricSelector"
-     style="margin-bottom:15px;">
-    </div>
-    <canvas id="mainCanvas"></canvas>
-
-    </div>
-
-    <div id="tableView"
-        style="display:none;"
-        class="table-wrap"></div>
-
-    </div>
-
-    {{ table_data|json_script:"table-data" }}
-    {{ device_map|json_script:"device-map" }}
-
-    <script>
+<script>
 
     // =====================================
     // DATA
@@ -403,12 +1090,54 @@
         ).textContent
     );
 
-    const datePreset =
-    document.getElementById("datePreset");
+    const datePreset = document.getElementById("datePreset");
+
+    const metricMap = {
+        weather_station: [
+            { value: "weather_Tw", label: "Temperature" },
+            { value: "weather_RHw", label: "Relative Humidity" },
+            { value: "weather_bp", label: "Pressure" },
+            { value: "weather_rf", label: "Rainfall" }
+        ],
+
+        water_level: [
+            { value: "water_level_water_lev_mt", label: "Water Level" },
+            // { value: "water_level_depth", label: "Water Depth" }
+        ],
+
+        flow_meter: [
+            { value: "flow_rate", label: "Flow Rate" },
+            { value: "flow_totalizer", label: "Totalizer" }
+        ]
+    };
 
     console.log("RAW DATA:", rawData);
     console.log("DEVICE MAP:", deviceMap);
 
+    if (!rawData.length) {
+
+        document.getElementById("title").textContent =
+            "No telemetry data available";
+
+        }
+        function showProcessing(message="Loading dashboard...") {
+
+            const overlay =
+                document.getElementById("loadingOverlay");
+
+            const text =
+                overlay.querySelector(".loader-text");
+
+            text.textContent = message;
+
+            overlay.style.display = "flex";
+
+            requestAnimationFrame(() => {});
+        }
+
+    function hideProcessing() {
+        document.getElementById("loadingOverlay").style.display = "none";
+    }
     // =====================================
     // CHART RENDER
     // ====================================
@@ -464,11 +1193,12 @@
 
         });
 
+        if(chartInstance){
+            chartInstance.destroy();
+            chartInstance=null;
+        }
         if(!datasets.length)
             return;
-
-        if(chartInstance)
-            chartInstance.destroy();
 
         chartInstance = new Chart(
 
@@ -941,72 +1671,6 @@
         });
     }
     // =====================================
-    // STATS
-    // =====================================
-
-    // function renderStats(){
-
-    //     const metrics =
-    //         getMetrics();
-
-    //     const el =
-    //         document.getElementById(
-    //             "statsBox"
-    //         );
-
-    //     el.innerHTML = "";
-
-    //     metrics.forEach(m=>{
-
-    //         const vals =
-    //             rawData
-    //             .map(
-    //                 r=>clean(r[m])
-    //             )
-    //             .filter(
-    //                 v=>v!==null
-    //             );
-
-    //         if(!vals.length)
-    //             return;
-
-    //         const min =
-    //             Math.min(...vals);
-
-    //         const max =
-    //             Math.max(...vals);
-
-    //         const avg =
-    //             (
-    //                 vals.reduce(
-    //                     (a,b)=>a+b,
-    //                     0
-    //                 ) / vals.length
-    //             ).toFixed(2);
-
-    //         el.innerHTML += `
-
-    //         <div class="stat-box">
-
-    //         <b>
-    //         ${cleanLabel(m)}
-    //         </b>
-
-    //         <hr>
-
-    //         Min : ${min}<br>
-    //         Max : ${max}<br>
-    //         Avg : ${avg}
-
-    //         </div>
-
-    //         `;
-
-    //     });
-
-    // }
-
-    // =====================================
     // TABLE
     // =====================================
 
@@ -1116,7 +1780,7 @@
             return;
 
         }
-            showLoading();
+        showProcessing("Loading dashboard...");
         const url =
 
             `?device=${device}`
@@ -1126,6 +1790,11 @@
             + `&to_date=${to}`;
 
         window.location.href = url;
+        
+        setTimeout(function () {
+        window.location.href = url;
+    }, 100);
+
 
     }
 
@@ -1274,9 +1943,6 @@
         if(custom)
             return;
 
-        if(preset === "custom")
-            return;
-
         const today = new Date();
 
         let from = new Date(today);
@@ -1331,6 +1997,61 @@
             to.toISOString().split("T")[0];
 
     }
+    function loadCompareMetrics() {
+
+        const category = comparecategorySelect.value;
+        const metricSelect = document.getElementById("comparemetricSelect");
+
+        metricSelect.innerHTML = "";
+
+        const metrics = metricMap[category] || [];
+
+        metrics.forEach(m => {
+            const opt = document.createElement("option");
+            opt.value = m.value;
+            opt.textContent = m.label;
+            metricSelect.appendChild(opt);
+        });
+
+    }
+
+function openTab(tab, btn) {
+
+    document.getElementById("singleTab").style.display =
+        tab === "single" ? "block" : "none";
+
+    document.getElementById("compareTab").style.display =
+        tab === "compare" ? "block" : "none";
+
+    document
+        .querySelectorAll(".tab-btn")
+        .forEach(button => {
+            button.classList.remove("active");
+        });
+
+    btn.classList.add("active");
+
+    if (tab === "compare") {
+
+        showProcessing("Loading comparison dashboard...");
+
+        setTimeout(function () {
+
+            loadcompareVillages();
+            loadcompareDevices();
+            loadCompareMetrics();
+
+            document.getElementById(
+                "comparisonResultCard"
+            ).style.display = "none";
+
+            hideProcessing();
+
+        }, 100);
+
+    }
+
+}
 
     // =====================================
     // INIT
@@ -1390,20 +2111,501 @@
 
         // RENDER DATA
 
-        if(rawData.length){
+        if (rawData.length > 0) {
+
+            document.getElementById("noDataMessage").style.display = "none";
+
+            document.getElementById("metricSelector").style.display = "grid";
+
+            document.getElementById("mainCanvas").style.display = "block";
 
             renderMetricSelector();
-
             renderChart();
-
-            // renderStats();
-
             renderTable();
+
+            } else {
+
+                document.getElementById("noDataMessage").style.display = "block";
+
+                // Hide checkbox header
+                document.getElementById("metricSelector").style.display = "none";
+
+                // Hide empty chart
+                document.getElementById("mainCanvas").style.display = "none";
+
+                // Hide empty table
+                document.getElementById("tableView").style.display = "none";
+
+            }
+        // loadcompareVillages();
+        // loadcompareDevices();
+
+
+        // =============================
+        // Compare Dashboard Defaults
+        // =============================
+
+        document.getElementById("comparisonResultCard").style.display = "none";
+
+        const today = new Date();
+
+        const sevenDaysAgo = new Date();
+
+        sevenDaysAgo.setDate(today.getDate() - 6);
+
+        document.getElementById("comparefromDate").value =
+            sevenDaysAgo.toISOString().split("T")[0];
+
+        document.getElementById("comparetoDate").value =
+            today.toISOString().split("T")[0];
+
+    };
+// =====================================================
+// COMPARE DEVICE TAB
+// =====================================================
+
+const comparecategorySelect =
+    document.getElementById("comparecategorySelect");
+
+const comparevillageSelect =
+    document.getElementById("comparevillageSelect");
+
+const comparemetricSelect =
+    document.getElementById("comparemetricSelect");
+
+let comparisonChart = null;
+
+
+// =====================================================
+// SELECT / CLEAR
+// =====================================================
+
+function selectAllDevices() {
+
+    document
+        .querySelectorAll("#deviceList input[type='checkbox']")
+        .forEach(cb => cb.checked = true);
+
+}
+
+function clearDevices() {
+
+    document
+        .querySelectorAll("#deviceList input[type='checkbox']")
+        .forEach(cb => cb.checked = false);
+
+}
+
+
+// =====================================================
+// LOAD METRICS
+// =====================================================
+
+function loadCompareMetrics() {
+
+    comparemetricSelect.innerHTML = "";
+
+    const metrics =
+        metricMap[
+            comparecategorySelect.value
+        ] || [];
+
+    if (!metrics.length) {
+
+        comparemetricSelect.innerHTML =
+            `<option value="">Select Metric</option>`;
+
+        return;
+
+    }
+
+    metrics.forEach(metric => {
+
+        const option =
+            document.createElement("option");
+
+        option.value = metric.value;
+
+        option.textContent = metric.label;
+
+        comparemetricSelect.appendChild(option);
+
+    });
+
+}
+
+
+// =====================================================
+// LOAD VILLAGES
+// =====================================================
+
+function loadcompareVillages() {
+
+    comparevillageSelect.innerHTML =
+        `<option value="">All Villages</option>`;
+
+    if (!comparecategorySelect.value)
+        return;
+
+    const villages = new Set();
+
+    Object.values(deviceMap).forEach(meta => {
+
+        if (
+            meta.category ===
+            comparecategorySelect.value
+        ) {
+
+            villages.add(meta.village);
 
         }
 
-    };
+    });
 
+    [...villages]
+        .sort()
+        .forEach(village => {
+
+            const option =
+                document.createElement("option");
+
+            option.value = village;
+
+            option.textContent = village;
+
+            comparevillageSelect.appendChild(option);
+
+        });
+
+}
+
+
+// =====================================================
+// LOAD DEVICES
+// =====================================================
+
+function loadcompareDevices() {
+
+    const container =
+        document.getElementById("deviceList");
+
+    container.innerHTML = "";
+
+    if (!comparecategorySelect.value) {
+
+        container.innerHTML =
+
+            `<p style="color:#666;">
+                Please select a category to view devices.
+            </p>`;
+
+        return;
+
+    }
+
+    let found = false;
+
+    Object.entries(deviceMap).forEach(([id, meta]) => {
+
+        if (
+            meta.category !==
+            comparecategorySelect.value
+        )
+            return;
+
+        if (
+            comparevillageSelect.value &&
+            meta.village !== comparevillageSelect.value
+        )
+            return;
+
+        found = true;
+
+        const label =
+            document.createElement("label");
+
+        label.className = "device-item";
+
+        label.innerHTML = `
+
+            <input
+                type="checkbox"
+                value="${id}">
+
+            <div class="device-details">
+
+                <div class="device-name">
+
+                    <strong>${meta.name || "Unnamed Device"}</strong>
+
+                </div>
+
+                <div class="device-id">
+
+                     <b>${id}</b>
+
+                </div>
+
+                <div class="device-village">
+
+                    ${meta.village || "-"}
+
+                </div>
+
+            </div>
+
+        `;
+
+        container.appendChild(label);
+
+    });
+
+    if (!found) {
+
+        container.innerHTML =
+
+            `<p style="color:#999;">
+                No devices found.
+            </p>`;
+
+    }
+
+}
+
+
+// =====================================================
+// COMPARE DEVICES
+// =====================================================
+
+function compareDevices() {
+
+    const devices =
+
+        Array.from(
+
+            document.querySelectorAll(
+                "#deviceList input:checked"
+            )
+
+        ).map(cb => cb.value);
+
+
+    if (devices.length < 2) {
+
+        alert("Please select at least two devices.");
+
+        return;
+
+    }
+
+
+    if (!comparemetricSelect.value) {
+
+        alert("Please select a metric.");
+
+        return;
+
+    }
+
+
+    if (
+        !comparefromDate.value ||
+        !comparetoDate.value
+    ) {
+
+        alert("Please select date range.");
+
+        return;
+
+    }
+
+
+    showProcessing("Comparing devices...");
+
+    document.getElementById(
+        "comparisonResultCard"
+    ).style.display = "block";
+
+
+    const url =
+
+        "{% url 'device_comparison_api' %}"
+
+        + "?devices="
+
+        + devices.join(",")
+
+        + "&metric="
+
+        + comparemetricSelect.value
+
+        + "&from_date="
+
+        + comparefromDate.value
+
+        + "&to_date="
+
+        + comparetoDate.value;
+
+
+    fetch(url)
+
+        .then(response => response.json())
+
+        .then(data => {
+
+            rendercompareChart(data);
+
+            hideProcessing();
+
+        })
+
+        .catch(error => {
+
+            console.error(error);
+
+            hideProcessing();
+
+            alert("Unable to compare devices.");
+
+        });
+
+}
+
+
+// =====================================================
+// RENDER CHART
+// =====================================================
+
+function rendercompareChart(data) {
+
+    const chartDiv =
+        document.getElementById(
+            "comparisonChartContainer"
+        );
+
+    const noData =
+        document.getElementById(
+            "compareNoData"
+        );
+
+
+    chartDiv.style.display = "block";
+
+    noData.style.display = "none";
+
+
+    if (data.nodata && data.nodata.length) {
+
+        chartDiv.style.display = "none";
+
+        noData.style.display = "block";
+
+        document.getElementById(
+            "noDataDevice"
+        ).innerHTML =
+
+            data.nodata.join("<br>");
+
+        return;
+
+    }
+
+
+    if (comparisonChart)
+        comparisonChart.destroy();
+
+
+    comparisonChart =
+
+        new Chart(
+
+            document.getElementById(
+                "comparisonChart"
+            ),
+
+            {
+
+                type: "line",
+
+                data: {
+
+                    labels: data.labels,
+
+                    datasets: data.datasets
+
+                },
+
+                options: {
+
+                    responsive: true,
+
+                    maintainAspectRatio: false,
+
+                    interaction: {
+
+                        mode: "index",
+
+                        intersect: false
+
+                    },
+
+                    plugins: {
+
+                        legend: {
+
+                            position: "top"
+
+                        }
+
+                    },
+
+                    scales: {
+
+                        x: {
+
+                            display: true
+
+                        },
+
+                        y: {
+
+                            beginAtZero: false
+
+                        }
+
+                    }
+
+                }
+
+            }
+
+        );
+
+}
+
+
+// =====================================================
+// EVENTS
+// =====================================================
+
+comparecategorySelect.addEventListener("change", () => {
+
+    loadcompareVillages();
+
+    loadcompareDevices();
+
+    loadCompareMetrics();
+
+});
+
+
+comparevillageSelect.addEventListener("change", () => {
+
+    loadcompareDevices();
+
+});
+// =================================
     </script>
 
     <!-- CSV FORM -->
