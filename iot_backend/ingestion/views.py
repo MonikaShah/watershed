@@ -1,5 +1,5 @@
 from email import message
-from tkinter import EventType
+# from tkinter import EventType
 
 from django.shortcuts import render
 from rest_framework.decorators import api_view

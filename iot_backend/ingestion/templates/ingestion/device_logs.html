@@ -11,11 +11,18 @@ body {
     margin: 0;
 }
 
-.header {
-    background: #1e293b;
-    color: white;
-    padding: 15px;
-    font-size: 18px;
+.header{
+    background:white;
+    padding:18px 25px;
+    box-shadow:0 2px 8px rgba(0,0,0,.08);
+    position:sticky;
+    top:0;
+    z-index:100;
+}
+
+.header h1{
+    font-size:24px;
+    color:#2d3e50;
 }
 
 .container {
@@ -117,26 +124,11 @@ th:nth-child(4), td:nth-child(4) { width: 120px; }
 
 <body>
 
-<div class="header">
-Device Event Logger
-</div>
+    <div class="header">
+        <h1>📡 Device Event Logger</h1>
+    </div>
 <div id="log-box"></div>
-<div class="container">
-    <form method="GET" style="margin-bottom: 15px; display:flex; gap:10px;">
 
-        <input type="date" name="start" value="{{ request.GET.start }}">
-        <input type="date" name="end" value="{{ request.GET.end }}">
-    
-        <input type="text" name="device" placeholder="Device ID"
-               value="{{ request.GET.device }}">
-    
-        <button type="submit">Filter</button>
-    
-        <a href="/custom-dashboard/device-logs-ui/">
-            Reset
-        </a>
-    
-    </form>
     <!-- <select id="deviceFilter"> -->
         <table class="log-table">
 
