@@ -1,10 +1,13 @@
+from email import message
+from tkinter import EventType
+
 from django.shortcuts import render
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.core.paginator import Paginator
 from django.utils.dateparse import parse_date
 from django.utils import timezone
-from datetime import timedelta
+from datetime import timedelta,datetime
 import os,json,time
 import requests
 from ingestion.utils import is_device_online
@@ -718,7 +721,8 @@ def get_device_latest_status(token, tb_device_id):
                     .replace("SAMBHAV_","")
                     .strip()
                 )
-
+                battery = parsed.get("battery_Volt")
+                rssi = parsed.get("rssi")
 
                 if not device_id:
                     continue
@@ -754,7 +758,10 @@ def get_device_latest_status(token, tb_device_id):
 
                     "time":ts,
 
-                    "payload":parsed
+                    "payload":parsed,
+                    "battery": battery,
+
+                    "rssi": rssi,
 
                 }
 
@@ -905,237 +912,54 @@ def export_csv(request):
 
 # views.py
 
-def dashboard_compare(request):
+def get_device_telemetry_logs(token, device_id, limit=200):
 
-    device_meta = DeviceMetadata.objects.all()
-
-    device_map = {}
-
-    for d in device_meta:
-
-        device_map[d.device_id] = {
-
-            "village": d.village,
-            "district": d.district,
-            "category": d.category,
-            "lat": d.latitude,
-            "lon": d.longitude,
-            "name": d.device_name
-
-        }
-
-    return render(
-
-        request,
-
-        "ingestion/dashboard_compare.html",
-
-        {
-            "device_map": device_map
-        }
-
+    url = (
+        f"{TB_URL}/api/plugins/telemetry/DEVICE/"
+        f"{device_id}/values/timeseries"
+        f"?limit={limit}"
     )
 
-@api_view(["GET"])
 
-def device_comparison_api(request):
+    headers = {
+        "X-Authorization": f"Bearer {token}"
+    }
 
-    selected_devices = request.GET.get(
-        "devices",
-        ""
-    ).split(",")
 
-    metric = request.GET.get(
-        "metric",
-        ""
+    response = requests.get(
+        url,
+        headers=headers,
+        timeout=10
     )
 
-    from_date = request.GET.get(
-        "from_date"
-    )
 
-    to_date = request.GET.get(
-        "to_date"
-    )
+    if response.status_code != 200:
+        return []
 
-    if (
-        not selected_devices
-        or not metric
-        or not from_date
-        or not to_date
-    ):
-        return Response({
-            "labels": [],
-            "datasets": []
-        })
 
-    token = get_tb_token()
+    data = response.json()
 
-    devices = get_tb_devices(token)
 
-    tb_device_id = None
+    logs = []
 
-    for d in devices:
 
-        if "SAMBHAV" in d["name"].upper():
+    for parameter, values in data.items():
 
-            tb_device_id = d["id"]["id"]
+        for v in values:
 
-            break
+            logs.append({
 
-    if not tb_device_id:
+                "parameter": parameter,
 
-        return Response({
-            "error": "TB Device not found"
-        })
+                "value": v["value"],
 
-    start_ts = int(
-
-        pd.Timestamp(from_date)
-        .tz_localize("Asia/Kolkata")
-        .timestamp() * 1000
-
-    )
-
-    end_ts = int(
-
-        (
-            pd.Timestamp(to_date)
-            + pd.Timedelta(days=1)
-        )
-        .tz_localize("Asia/Kolkata")
-        .timestamp() * 1000
-
-    )
-
-    all_times = set()
-
-    device_frames = {}
-
-    # ----------------------------------
-    # FETCH EACH DEVICE
-    # ----------------------------------
-
-    for device in selected_devices:
-
-        df = get_telemetry(
-
-            token=token,
-
-            tb_device_id=tb_device_id,
-
-            selected_device=device,
-
-            start_ts=start_ts,
-
-            end_ts=end_ts
-
-        )
-
-        if df.empty:
-
-            continue
-
-        if metric not in df.columns:
-
-            print(
-                f"{metric} not found in {device}"
-            )
-
-            continue
-
-        device_frames[device] = df
-
-        all_times.update(
-            df["time"].tolist()
-        )
-
-    # ----------------------------------
-    # NO DATA
-    # ----------------------------------
-
-    if not device_frames:
-
-        return Response({
-
-            "labels": [],
-
-            "datasets": []
-
-        })
-
-    labels = sorted(all_times)
-    
-
-    datasets = []
-
-    # ----------------------------------
-    # BUILD CHART DATA
-    # ----------------------------------
-
-    for device, df in device_frames.items():
-
-        lookup = dict(
-
-            zip(
-
-                df["time"],
-
-                pd.to_numeric(
-                    df[metric],
-                    errors="coerce"
+                "timestamp": datetime.fromtimestamp(
+                    v["ts"]/1000
                 )
-
-            )
-
-        )
-
-        values = []
-
-        for t in labels:
-
-            v = lookup.get(t)
-
-            if pd.isna(v):
-
-                values.append(None)
-
-            else:
-
-                values.append(
-                    float(v)
-                )
-
-        datasets.append({
-
-            "label": device,
-
-            "data": values,
-
-            "borderWidth": 2,
-
-            "tension": 0.3
-
-        })
-    label_strings = [
-
-        t.strftime(
-            "%d-%b-%Y %I:%M %p"
-        )
-
-        for t in labels
-
-    ]
-    return Response({
-
-        "labels": label_strings,
-
-        "datasets": datasets
-
-    })
+            })
 
 
-
+    return logs
 
 def device_status_dashboard(request):
 
@@ -1280,57 +1104,57 @@ def device_status_dashboard(request):
 
 )
     
-def device_status(request):
+# def device_status(request):
 
-    statuses = (
-        DeviceStatus.objects
-        .select_related("device")
-        .order_by("device__category", "device__village")
-    )
+#     statuses = (
+#         DeviceStatus.objects
+#         .select_related("device")
+#         .order_by("device__category", "device__village")
+#     )
 
-    water = []
-    weather = []
+#     water = []
+#     weather = []
 
-    online_count = 0
+#     online_count = 0
 
-    for s in statuses:
+#     for s in statuses:
 
-        online = is_device_online(s.last_seen)
+#         online = is_device_online(s.last_seen)
 
-        if online:
-            online_count += 1
+#         if online:
+#             online_count += 1
 
-        row = {
-            "device_id": s.device.device_id,
-            "device_name": s.device.device_name,
-            "village": s.device.village,
-            "district": s.device.district,
-            "category": s.device.category,
-            "last_seen": s.last_seen,
-            "online": online,
-            "battery": s.battery,
-            "rssi": s.rssi,
-        }
+#         row = {
+#             "device_id": s.device.device_id,
+#             "device_name": s.device.device_name,
+#             "village": s.device.village,
+#             "district": s.device.district,
+#             "category": s.device.category,
+#             "last_seen": s.last_seen,
+#             "online": online,
+#             "battery": s.battery,
+#             "rssi": s.rssi,
+#         }
 
-        if s.device.category == "water_level":
-            water.append(row)
+#         if s.device.category == "water_level":
+#             water.append(row)
 
-        elif s.device.category == "weather_station":
-            weather.append(row)
+#         elif s.device.category == "weather_station":
+#             weather.append(row)
 
-    return render(
-        request,
-        "ingestion/device_status.html",
-        {
-            "water": water,
-            "weather": weather,
-            "water_count": len(water),
-            "weather_count": len(weather),
-            "total_count": len(water) + len(weather),
-            "online_count": online_count,
-            "offline_count": len(water) + len(weather) - online_count,
-        },
-    )
+#     return render(
+#         request,
+#         "ingestion/device_status.html",
+#         {
+#             "water": water,
+#             "weather": weather,
+#             "water_count": len(water),
+#             "weather_count": len(weather),
+#             "total_count": len(water) + len(weather),
+#             "online_count": online_count,
+#             "offline_count": len(water) + len(weather) - online_count,
+#         },
+#     )
 
 
 def device_logs(request):
@@ -1365,44 +1189,121 @@ def device_logs(request):
 
 
 
+
 def device_logs_page(request):
 
-    start_date = request.GET.get("start")
-    end_date = request.GET.get("end")
-    device = request.GET.get("device")
+    token = get_tb_token()
 
-    logs = DeviceEventLog.objects.all()
+    devices = get_tb_devices(token)
 
-    # -------------------------
-    # Date filtering
-    # -------------------------
-    if start_date:
-        logs = logs.filter(timestamp__date__gte=parse_date(start_date))
+    logs = []
 
-    if end_date:
-        logs = logs.filter(timestamp__date__lte=parse_date(end_date))
+    now = timezone.now()
 
-    # -------------------------
-    # Device filter
-    # -------------------------
-    if device:
-        logs = logs.filter(device_id=device)
 
-    logs = logs.order_by("-timestamp")
+    # Find SAMBHAV ThingsBoard device
+    tb_device_id = None
 
-    # -------------------------
-    # Pagination
-    # -------------------------
-    print("TOTAL LOGS AFTER FILTER:", logs.count())
-    paginator = Paginator(logs, 50)   # 50 logs per page
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
+    for d in devices:
+
+        if "SAMBHAV" in d.get("name","").upper():
+
+            tb_device_id = d["id"]["id"]
+            break
+
+
+    if not tb_device_id:
+        return render(
+            request,
+            "ingestion/device_logs.html",
+            {
+                "logs": [],
+                "page_obj": None
+            }
+        )
+
+
+    # Get all device latest status
+    latest_status = get_device_latest_status(
+        token,
+        tb_device_id
+    )
+
+
+    metadata = {
+        d.device_id.replace("SAMBHAV_", "").strip(): d
+        for d in DeviceMetadata.objects.all()
+    }
+
+    for device_id, data in latest_status.items():
+
+        if device_id not in metadata:
+            continue
+
+        device = metadata[device_id]
+        last_seen = data["time"]
+        battery = data.get("battery")
+        rssi = data.get("rssi")
+
+        if hasattr(last_seen, "to_pydatetime"):
+            last_seen = last_seen.to_pydatetime()
+
+        diff = now - last_seen
+
+        if diff <= timedelta(minutes=60):
+            event_type = "STATUS"
+            message = "Device online"
+            cause = ""
+        elif diff <= timedelta(minutes=90):
+            event_type = "WARNING"
+            message = f"Telemetry delayed by {int(diff.total_seconds()/60)} minutes"
+            cause = ""
+        else:
+            if battery is not None and battery < 11.5:
+                cause = "Possible low battery"
+
+            elif rssi is not None and rssi < 10:
+                cause = "Possible weak GSM signal"
+
+            else:
+                cause = "Power loss / Network issue (cannot determine exactly)"
+            
+            event_type = "ERROR"
+            message = f"No telemetry received for {int(diff.total_seconds()/3600)} hours"
+
+        logs.append({
+            "timestamp": last_seen,
+            "device_id": device.device_id,
+            "device_name": device.device_name,
+            "village": device.village,
+            "district": device.district,
+            "category": device.category,
+            "event_type": event_type,
+            "message": message,
+            "cause": cause,
+        })
+    logs.sort(
+        key=lambda x:x["timestamp"],
+        reverse=True
+    )
+
+
+    paginator = Paginator(
+        logs,
+        50
+    )
+
+
+    page_obj = paginator.get_page(
+        request.GET.get("page")
+    )
+
 
     return render(
         request,
         "ingestion/device_logs.html",
         {
             "logs": page_obj,
-            "page_obj": page_obj,
+            "page_obj": page_obj
         }
     )
