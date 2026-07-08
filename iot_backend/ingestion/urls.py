@@ -16,9 +16,10 @@ urlpatterns = [
         views.dashboard_compare,
         name='dashboard_compare'
     ),
-    path( "device-status/", views.device_status, name="device_status",),
+    # path( "device-status/", views.device_status, name="device_status",),
     path("device-logs/", views.device_logs, name="device_logs"),
-    path("device-logs-ui/", views.device_logs_page),
+    path("device-logs-ui/", views.device_logs_page, name="device_logs_page"),
+    path("device-status-ui/", views.device_status_dashboard, name="device_status_dashboard"),
     # NEW API
     path(
         'api/device-comparison/',
