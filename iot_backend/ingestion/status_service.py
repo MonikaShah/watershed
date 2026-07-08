@@ -1,95 +1,129 @@
-from datetime import datetime,UTC
-from zoneinfo import ZoneInfo
+from datetime import datetime, UTC, timedelta
 
-from django.db import transaction
+from django.db import connections
 
-from ingestion.models import DeviceMetadata, DeviceStatus
-
-
-IST = ZoneInfo("Asia/Kolkata")
+from ingestion.models import DeviceMetadata
 
 
-def packet_timestamp(packet):
+ONLINE_TIMEOUT = timedelta(minutes=30)
+
+
+def get_latest_telemetry():
     """
-    Returns packet timestamp as UTC datetime.
-
-    Packet contains Unix epoch seconds.
-    Example:
-    {
-        "timestamp":1783499401,
-        ...
-    }
+    Returns latest telemetry keyed by device id.
+    Reads directly from ThingsBoard PostgreSQL.
     """
 
-    ts = packet.get("timestamp")
+    query = """
+    SELECT *
+    FROM (
 
-    if not ts:
-        return None
+        SELECT DISTINCT ON (json_v->>'Device_ID')
 
-    return datetime.fromtimestamp(
-        ts,
+            json_v->>'Device_ID' AS device_id,
+
+            (json_v->>'timestamp')::bigint AS device_timestamp,
+
+            to_timestamp((json_v->>'timestamp')::bigint)
+                AT TIME ZONE 'Asia/Kolkata'
+                AS last_posted,
+
+            (json_v->>'battery_Volt')::numeric
+                AS battery,
+
+            (json_v->>'rssi')::int
+                AS rssi
+
+        FROM ts_kv
+
+        WHERE entity_id='d4b176a0-3d64-11f1-ba47-977177853c99'
+
+        ORDER BY json_v->>'Device_ID', ts DESC
+
+    ) t;
+    """
+
+    with connections["thingsboard"].cursor() as cursor:
+
+        cursor.execute(query)
+
+        columns = [
+            c[0]
+            for c in cursor.description
+        ]
+
+        rows = [
+            dict(zip(columns, row))
+            for row in cursor.fetchall()
+        ]
+
+    telemetry = {}
+
+    for row in rows:
+
+        device_id = row["device_id"].replace(
+            "SAMBHAV_",
+            ""
+        )
+
+        telemetry[device_id] = row
+
+    return telemetry
+
+
+def is_online(device_timestamp):
+
+    if device_timestamp is None:
+        return False
+
+    last_seen = datetime.fromtimestamp(
+        device_timestamp,
         tz=UTC
     )
 
-
-def packet_timestamp_ist(packet):
-    """
-    Same timestamp converted to Asia/Kolkata.
-    Useful for display/logging.
-    """
-
-    dt = packet_timestamp(packet)
-
-    if dt is None:
-        return None
-
-    return dt.astimezone(IST)
+    return (
+        datetime.now(UTC) - last_seen
+    ) <= ONLINE_TIMEOUT
 
 
-@transaction.atomic
-def update_device_status(packet):
-    """
-    Updates one device from one telemetry packet.
-    """
+def get_all_device_status():
 
-    device_name = packet.get("Device_ID")
+    telemetry = get_latest_telemetry()
 
-    if not device_name:
-        return False
+    devices = []
 
-    device_id = device_name.replace(
-        "SAMBHAV_",
-        ""
-    )
+    for meta in DeviceMetadata.objects.order_by(
+        "category",
+        "village"
+    ):
 
-    try:
-
-        meta = DeviceMetadata.objects.get(
-            device_id=device_id
+        t = telemetry.get(
+            meta.device_id,
+            {}
         )
 
-    except DeviceMetadata.DoesNotExist:
+        devices.append({
 
-        print(f"Unknown device : {device_id}")
+            "device_id": meta.device_id,
 
-        return False
+            "device_name": meta.device_name,
 
-    last_seen = packet_timestamp(packet)
+            "category": meta.category,
 
-    DeviceStatus.objects.update_or_create(
+            "village": meta.village,
 
-        device=meta,
+            "district": meta.district,
 
-        defaults={
+            "battery": t.get("battery"),
 
-            "last_seen": last_seen,
+            "rssi": t.get("rssi"),
 
-            "battery": packet.get("battery_Volt"),
+            "last_posted": t.get("last_posted"),
 
-            "rssi": packet.get("rssi"),
+            "online": is_online(
+                t.get("device_timestamp")
+            ),
 
-        }
+        })
 
-    )
-
-    return True
+    return devices
