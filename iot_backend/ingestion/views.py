@@ -7,6 +7,7 @@ from django.utils import timezone
 from datetime import timedelta
 import os,json,time
 import requests
+from ingestion.utils import is_device_online
 from.models import DeviceMetadata,DeviceStatus,DeviceEventLog
 # from django.db import connection
 import pandas as pd
@@ -17,6 +18,7 @@ from rest_framework.decorators import api_view
 # views.py
 from django.http import JsonResponse
 from django.db import connections
+from .utils import is_device_online
 from django.conf import settings
 from .services import (
     get_tb_token,
@@ -978,6 +980,11 @@ def device_status(request):
 
     for s in statuses:
 
+        online = is_device_online(s.last_seen)
+
+        if online:
+            online_count += 1
+
         row = {
             "device_id": s.device.device_id,
             "device_name": s.device.device_name,
@@ -985,11 +992,10 @@ def device_status(request):
             "district": s.device.district,
             "category": s.device.category,
             "last_seen": s.last_seen,
-            "online": s.online,
+            "online": online,
+            "battery": s.battery,
+            "rssi": s.rssi,
         }
-
-        if s.online:
-            online_count += 1
 
         if s.device.category == "water_level":
             water.append(row)

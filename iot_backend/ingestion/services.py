@@ -9,7 +9,7 @@ from .models import DeviceEventLog
 # from asgiref.sync import async_to_sync
 # from channels.layers import get_channel_layer
 from ingestion.event_processor import process_device
-
+from ingestion.status_service import update_device_status
 
 # def push_log_ws(data):
 
@@ -24,22 +24,15 @@ from ingestion.event_processor import process_device
 #     )
 
 
-# def log_device_event(device_id, event_type, message, extra=None):
+def log_device_event(device_id, event_type, message, extra=None):
 
-#     # Save in database
-#     DeviceEventLog.objects.create(
-#         device_id=device_id,
-#         event_type=event_type,
-#         message=message,
-#         extra=extra or {},
-#     )
-
-#     # Push to websocket
-#     push_log_ws({
-#         "device_id": device_id,
-#         "event_type": event_type,
-#         "message": message,
-#     })
+    # Save in database
+    DeviceEventLog.objects.create(
+        device_id=device_id,
+        event_type=event_type,
+        message=message,
+        extra=extra or {},
+    )
 
 
 
@@ -277,7 +270,7 @@ def update_device_status():
 
     for packet in latest.values():
 
-        process_device(packet)
+        update_device_status(packet)
 
         ts = packet["_tb_ts"]
 
