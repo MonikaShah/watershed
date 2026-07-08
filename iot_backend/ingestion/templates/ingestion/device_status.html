@@ -231,13 +231,16 @@ th,td{
 <p>{{ total_count }}</p>
 </div>
 <div class="card">
-        <h2>Online</h2>
+        <h2>🟢 Online</h2>
+        
         <p>{{ online_count }}</p>
     </div>
 
     <div class="card">
-        <h2>Offline</h2>
-        <p>{{ offline_count }}</p>
+        <h2>🟠 Inactive</h2>
+        
+
+        <p>{{ inactive_count }}</p>
     </div>
 <div class="card">
 <h2>Water Level</h2>
@@ -255,8 +258,8 @@ th,td{
 <input
 class="search"
 type="text"
-placeholder="Search Device / Village..."
-onkeyup="filterTable(this.value)"
+placeholder="Search Water Device / Village..."
+onkeyup="filterWater(this.value)"
 >
 
 <div class="section">
@@ -265,18 +268,20 @@ onkeyup="filterTable(this.value)"
 
 <div class="table-responsive">
 
-<table id="deviceTable">
+<table id="waterTable">
 
 <thead>
 
 <tr>
 
-<th>Status</th>
-<th>Device ID</th>
-<th>Name</th>
-<th>Village</th>
-<th>District</th>
-<th>Last Posted</th>
+    <th>Device ID</th>
+    <th>Name</th>
+    <th>Village</th>
+    <th>District</th>
+    <!-- <th>Last Posted</th> -->
+    <th>Last Seen</th>
+    <th>Age</th>
+    <th>Status</th>
 
 </tr>
 
@@ -288,16 +293,6 @@ onkeyup="filterTable(this.value)"
 
 <tr>
 
-<td>
-
-{% if d.online %}
-<span class="status online"></span>
-{% else %}
-<span class="status offline"></span>
-{% endif %}
-
-</td>
-
 <td>{{ d.device_id }}</td>
 
 <td>{{ d.device_name }}</td>
@@ -307,6 +302,28 @@ onkeyup="filterTable(this.value)"
 <td>{{ d.district }}</td>
 
 <td>{{ d.last_seen|date:"d M Y H:i" }}</td>
+<td>{{ d.age }}</td>
+<td>
+    
+    {% if d.status == "Online" %}
+    
+    🟢 Online
+    
+    {% elif d.status == "Offline" %}
+    
+    🔴 Offline
+    
+    {% elif d.status == "Inactive" %}
+    
+    🟠 Inactive
+    
+    {% else %}
+    
+    ⚪ No Data
+    
+    {% endif %}
+    
+    </td>
 
 </tr>
 
@@ -324,21 +341,29 @@ onkeyup="filterTable(this.value)"
 <div class="section">
 
 <h2>Weather Stations</h2>
-
+<input
+class="search"
+type="text"
+placeholder="Search Weather Device / Village..."
+onkeyup="filterWeather(this.value)"
+>
 <div class="table-responsive">
 
-<table>
+<table id="weatherTable">
 
 <thead>
 
 <tr>
 
-<th>Status</th>
+
 <th>Device ID</th>
 <th>Name</th>
 <th>Village</th>
 <th>District</th>
-<th>Last Posted</th>
+<!-- <th>Last Posted</th> -->
+<th>Last Seen</th>
+<th>Age</th>
+<th>Status</th>
 
 </tr>
 
@@ -346,35 +371,63 @@ onkeyup="filterTable(this.value)"
 
 <tbody>
 
-{% for d in weather %}
-
-<tr>
-
-<td>
-
-{% if d.online %}
-<span class="status online"></span>
-{% else %}
-<span class="status offline"></span>
-{% endif %}
-
-</td>
-
-<td>{{ d.device_id }}</td>
-
-<td>{{ d.device_name }}</td>
-
-<td>{{ d.village }}</td>
-
-<td>{{ d.district }}</td>
-
-<td>{{ d.last_seen|date:"d M Y H:i" }}</td>
-
-</tr>
-
-{% endfor %}
-
-</tbody>
+    {% for d in rows %}
+    
+    <tr>
+    
+    <td>{{ d.device_id }}</td>
+    
+    <td>{{ d.device_name }}</td>
+    
+    <td>{{ d.village }}</td>
+    
+    <td>{{ d.district }}</td>
+    
+    <!-- <td>{{ d.category }}</td> -->
+    <!--  -->
+    <td>
+    
+    {% if d.last_seen %}
+    
+    {{ d.last_seen|date:"d-M-Y H:i:s" }}
+    
+    {% else %}
+    
+    -
+    
+    {% endif %}
+    
+    </td>
+    
+    <td>{{ d.age }}</td>
+    
+    <td>
+    
+    {% if d.status == "Online" %}
+    
+    🟢 Online
+    
+    {% elif d.status == "Offline" %}
+    
+    🔴 Offline
+    
+    {% elif d.status == "Inactive" %}
+    
+    🟠 Inactive
+    
+    {% else %}
+    
+    ⚪ No Data
+    
+    {% endif %}
+    
+    </td>
+    
+    </tr>
+    
+    {% endfor %}
+    
+    </tbody>
 
 </table>
 
@@ -386,23 +439,46 @@ onkeyup="filterTable(this.value)"
 
 <script>
 
-function filterTable(value){
+function filterWater(value){
 
-value=value.toLowerCase();
+    value=value.toLowerCase();
+    
+    document.querySelectorAll("#waterTable tbody tr")
+    .forEach(function(row){
+    
+    row.style.display =
+    row.innerText.toLowerCase().includes(value)
+    ? ""
+    : "none";
+    
+    });
+    
+    }
+    
+    
+    
+    function filterWeather(value){
+    
+    value=value.toLowerCase();
+    
+    document.querySelectorAll("#weatherTable tbody tr")
+    .forEach(function(row){
+    
+    row.style.display =
+    row.innerText.toLowerCase().includes(value)
+    ? ""
+    : "none";
+    
+    });
+    
+    }
+    
+    
+    setTimeout(function(){
+    location.reload();
+    },30000);
 
-document.querySelectorAll("tbody tr").forEach(function(row){
 
-row.style.display=row.innerText.toLowerCase().includes(value)?"":"none";
-
-});
-
-}
-
-setTimeout(function(){
-
-location.reload();
-
-},30000);
 
 </script>
 

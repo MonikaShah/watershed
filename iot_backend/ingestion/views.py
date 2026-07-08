@@ -596,6 +596,175 @@ def dashboard_v5(request):
 
     )
 
+def get_device_last_seen(token, tb_device_id):
+
+    headers = {
+        "X-Authorization": f"Bearer {token}"
+    }
+
+    # -------------------------------
+    # Get available telemetry keys
+    # -------------------------------
+
+    keys_url = (
+        f"{TB_URL}/api/plugins/telemetry/DEVICE/"
+        f"{tb_device_id}/keys/timeseries"
+    )
+
+    r = requests.get(keys_url, headers=headers)
+    r.raise_for_status()
+
+    keys = r.json()
+
+    if not keys:
+        return {}
+
+    keys_str = ",".join(keys)
+
+    # -------------------------------
+    # Download recent telemetry
+    # -------------------------------
+
+    end_ts = int(pd.Timestamp.utcnow().timestamp() * 1000)
+
+    start_ts = end_ts - (30 * 24 * 60 * 60 * 1000)   # last 30 days
+
+    data_url = (
+        f"{TB_URL}/api/plugins/telemetry/DEVICE/"
+        f"{tb_device_id}/values/timeseries"
+        f"?keys={keys_str}"
+        f"&startTs={start_ts}"
+        f"&endTs={end_ts}"
+        f"&limit=50000"
+    )
+
+    r = requests.get(data_url, headers=headers)
+    r.raise_for_status()
+
+    data = r.json()
+
+    last_seen = {}
+
+    for tb_key, values in data.items():
+
+        for item in values:
+
+            try:
+
+                parsed = json.loads(item["value"])
+
+                device = parsed.get("Device_ID", "").replace("SAMBHAV_", "").strip()
+
+                ts = parsed.get("timestamp")
+
+                if not device or not ts:
+                    continue
+
+                ts = pd.to_datetime(
+                    ts,
+                    unit="s",
+                    utc=True
+                ).tz_convert("Asia/Kolkata")
+
+                if (
+                    device not in last_seen
+                    or
+                    ts > last_seen[device]
+                ):
+                    last_seen[device] = ts
+
+            except Exception:
+                continue
+
+    return last_seen
+
+def get_device_latest_status(token, tb_device_id):
+
+    headers = {
+        "X-Authorization": f"Bearer {token}"
+    }
+
+    url = (
+        f"{TB_URL}/api/plugins/telemetry/DEVICE/"
+        f"{tb_device_id}/values/timeseries"
+    )
+
+
+    r = requests.get(
+        url,
+        headers=headers
+    )
+
+    r.raise_for_status()
+
+    data = r.json()
+
+
+    last_seen = {}
+
+
+    for key, values in data.items():
+
+        for item in values:
+
+            try:
+
+                parsed = json.loads(
+                    item["value"]
+                )
+
+                device_id = (
+                    parsed.get("Device_ID","")
+                    .replace("SAMBHAV_","")
+                    .strip()
+                )
+
+
+                if not device_id:
+                    continue
+
+
+                timestamp = parsed.get(
+                    "timestamp"
+                )
+
+
+                if timestamp:
+
+                    ts = pd.to_datetime(
+                        timestamp,
+                        unit="s",
+                        utc=True
+                    ).tz_convert(
+                        "Asia/Kolkata"
+                    )
+
+                else:
+
+                    ts = pd.to_datetime(
+                        item["ts"],
+                        unit="ms",
+                        utc=True
+                    ).tz_convert(
+                        "Asia/Kolkata"
+                    )
+
+
+                last_seen[device_id] = {
+
+                    "time":ts,
+
+                    "payload":parsed
+
+                }
+
+
+            except Exception as e:
+
+                print(e)
+
+
+    return last_seen
 # def db_tables(request):
 #     with connection.cursor() as cursor:
 #         cursor.execute("""
@@ -965,6 +1134,152 @@ def device_comparison_api(request):
 
     })
 
+
+
+
+def device_status_dashboard(request):
+
+    token = get_tb_token()
+
+    devices = get_tb_devices(token)
+
+    tb_device_id = None
+
+    for d in devices:
+
+        if "SAMBHAV" in d.get("name", "").upper():
+
+            tb_device_id = d["id"]["id"]
+
+            break
+
+    # -----------------------------------
+    # Get latest timestamp of each device
+    # -----------------------------------
+
+    last_seen = {}
+
+    if tb_device_id:
+
+        last_seen = get_device_latest_status(
+            token,
+            tb_device_id
+        )
+
+    # -----------------------------------
+    # Build table
+    # -----------------------------------
+
+        # -----------------------------------
+    # Build tables
+    # -----------------------------------
+
+    rows = []       # weather
+    water = []      # water level
+
+    now = timezone.now()
+
+    for d in DeviceMetadata.objects.all().order_by("device_id"):
+
+        device = d.device_id.replace("SAMBHAV_", "").strip()
+
+        latest_data = last_seen.get(device)
+
+        if latest_data is None:
+
+            latest = None
+            status = "No Data"
+            age = "-"
+
+        else:
+
+            latest = latest_data["time"]
+
+            diff = now - latest_data["time"]
+
+            age = str(diff).split(".")[0]
+
+
+            if diff <= timedelta(minutes=60):
+
+                status = "Online"
+
+            elif diff <= timedelta(hours=24):
+
+                status = "Offline"
+
+            else:
+
+                status = "Inactive"
+
+
+        device_row = {
+
+            "device_id": d.device_id,
+
+            "device_name": d.device_name,
+
+            "village": d.village,
+
+            "district": d.district,
+
+            "category": d.category,
+
+            "last_seen": latest,
+
+            "age": age,
+
+            "status": status
+
+        }
+
+
+        # Separate devices
+
+        if d.category == "water_level":
+
+            water.append(device_row)
+
+
+        elif d.category == "weather_station":
+
+            rows.append(device_row)
+
+    return render(
+
+    request,
+
+    "ingestion/device_status.html",
+
+    {
+
+        "rows": rows,          # weather devices
+
+        "water": water,        # water devices
+
+        "total_count": len(rows)+len(water),
+
+        "water_count": len(water),
+
+        "weather_count": len(rows),
+
+        "online_count": sum(
+            1 for d in rows+water 
+            if d["status"]=="Online"
+        ),
+
+        "offline_count": sum(
+            1 for d in rows+water 
+            if d["status"]=="Offline"
+        ),
+        "inactive_count": sum(
+            1 for d in rows+water 
+            if d["status"]=="Inactive"
+        )
+    }
+
+)
+    
 def device_status(request):
 
     statuses = (
