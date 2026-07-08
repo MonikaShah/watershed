@@ -9,7 +9,7 @@ from .models import DeviceEventLog
 # from asgiref.sync import async_to_sync
 # from channels.layers import get_channel_layer
 from ingestion.event_processor import process_device
-from ingestion.status_service import update_device_status
+# from ingestion.status_service import update_device_status
 
 # def push_log_ws(data):
 
