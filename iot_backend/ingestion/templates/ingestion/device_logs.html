@@ -1,222 +1,919 @@
-<!DOCTYPE html>
-<html>
-<head>
-<title>Device Event Logger</title>
+{% extends "ingestion/base.html" %}
+
+{% block title %}
+Device Event Logger
+{% endblock %}
+
+{% block extra_css %}
 
 <style>
 
-body {
-    font-family: Arial;
-    background: #f4f6fb;
-    margin: 0;
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
 }
 
-.header{
-    background:white;
-    padding:18px 25px;
-    box-shadow:0 2px 8px rgba(0,0,0,.08);
+body{
+    font-family:Arial,Helvetica,sans-serif;
+    background:#f5f7fb;
+    color:#2d3748;
+}
+
+/* ===========================================================
+   HEADER
+=========================================================== */
+
+.topbar{
+
     position:sticky;
     top:0;
-    z-index:100;
+    z-index:1000;
+
+    background:#fff;
+
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+
+    padding:18px 35px;
+
+    border-bottom:1px solid #e5e7eb;
+
+    box-shadow:0 3px 14px rgba(0,0,0,.08);
+
 }
 
-.header h1{
-    font-size:24px;
-    color:#2d3e50;
+.brand{
+
+    display:flex;
+    align-items:center;
+    gap:16px;
+
 }
 
-.container {
-    padding: 20px;
+.brand-icon{
+
+    width:56px;
+    height:56px;
+
+    border-radius:14px;
+
+    background:linear-gradient(135deg,#2563eb,#60a5fa);
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    font-size:28px;
+    color:white;
+
+    box-shadow:0 10px 20px rgba(37,99,235,.25);
+
 }
 
-table {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;   /* IMPORTANT */
+.brand h1{
+
+    font-size:28px;
+    color:#1f2937;
+    margin-bottom:3px;
+
 }
 
-th, td {
-    text-align: left;
-    vertical-align: middle;
-}
-th:nth-child(1), td:nth-child(1) { width: 120px; }
-th:nth-child(2), td:nth-child(2) { width: 100px; }
-th:nth-child(3), td:nth-child(3) { width: 140px; }
-th:nth-child(4), td:nth-child(4) { width: 120px; }
-.badge {
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 12px;
-    color: white;
-}
-.log-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: white;
-    table-layout: fixed;   /* KEY FIX */
-    border-radius: 10px;
-    overflow: hidden;
+.brand span{
+
+    color:#6b7280;
+    font-size:14px;
+
 }
 
-.log-table th,
-.log-table td {
-    padding: 12px 10px;
-    text-align: left;
-    vertical-align: middle;
-    border-bottom: 1px solid #eee;
-    word-wrap: break-word;
+.topnav{
+
+    display:flex;
+    gap:12px;
+
 }
 
-/* Header styling */
-.log-table th {
-    background: #2563eb;
-    color: white;
-    font-weight: 600;
+.topnav a{
+
+    text-decoration:none;
+    color:#374151;
+
+    padding:11px 18px;
+
+    border-radius:10px;
+
+    font-weight:600;
+
+    transition:.25s;
+
 }
 
-/* Column widths (important for alignment) */
-.log-table th:nth-child(1),
-.log-table td:nth-child(1) { width: 110px; }
+.topnav a:hover{
 
-.log-table th:nth-child(2),
-.log-table td:nth-child(2) { width: 90px; }
+    background:#eff6ff;
+    color:#2563eb;
 
-.log-table th:nth-child(3),
-.log-table td:nth-child(3) { width: 140px; }
-
-.log-table th:nth-child(4),
-.log-table td:nth-child(4) { width: 100px; }
-
-.log-table th:nth-child(5),
-.log-table td:nth-child(5) { width: auto; }
-
-.DATA {
-    background: #22c55e;      /* Green */
 }
 
-.STATUS {
-    background: #3b82f6;      /* Blue */
+.topnav .active{
+
+    background:#2563eb;
+    color:white;
+
+    box-shadow:0 5px 16px rgba(37,99,235,.25);
+
 }
 
-.WARNING {
-    background: #f59e0b;      /* Orange */
+/* ===========================================================
+   PAGE
+=========================================================== */
+
+.container{
+
+    max-width:1450px;
+    margin:auto;
+    padding:30px;
+
 }
 
-.ERROR {
-    background: #ef4444;      /* Red */
+/* ===========================================================
+   SUMMARY CARDS
+=========================================================== */
+
+.cards{
+
+    display:grid;
+
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+
+    gap:20px;
+
+    margin-bottom:30px;
+
 }
 
-.OTA {
-    background: #8b5cf6;      /* Purple */
-}
-.container {
-    padding: 20px;
-    max-width: 1400px;
-    margin: auto;
+.card{
+
+    background:white;
+
+    border-radius:14px;
+
+    padding:22px;
+
+    box-shadow:0 5px 16px rgba(0,0,0,.07);
+
+    transition:.25s;
+
 }
 
-@media(max-width:768px){
-    table { font-size: 12px; }
+.card:hover{
+
+    transform:translateY(-3px);
+
+}
+
+.card h2{
+
+    color:#6b7280;
+
+    font-size:14px;
+
+    margin-bottom:10px;
+
+}
+
+.card p{
+
+    font-size:34px;
+
+    font-weight:700;
+
+    color:#111827;
+
+}
+
+/* ===========================================================
+   SEARCH
+=========================================================== */
+
+.search{
+
+    width:100%;
+
+    padding:14px 18px;
+
+    border:1px solid #d1d5db;
+
+    border-radius:10px;
+
+    font-size:15px;
+
+    margin-bottom:25px;
+
+    outline:none;
+
+}
+
+.search:focus{
+
+    border-color:#2563eb;
+
+    box-shadow:0 0 0 3px rgba(37,99,235,.15);
+
+}
+
+/* ===========================================================
+   TABLE SECTION
+=========================================================== */
+
+.section{
+
+    background:white;
+
+    border-radius:14px;
+
+    padding:22px;
+
+    box-shadow:0 5px 16px rgba(0,0,0,.07);
+
+}
+
+.section h2{
+
+    margin-bottom:20px;
+
+    color:#1f2937;
+
+}
+
+.table-responsive{
+
+    overflow-x:auto;
+
+}
+
+/*=========================================================
+TABLE
+=========================================================*/
+
+.log-table{
+
+width:100%;
+
+border-collapse:collapse;
+
+min-width:1200px;
+
+}
+
+.log-table th{
+
+background:#2563eb;
+
+color:white;
+
+padding:14px;
+
+font-size:14px;
+
+font-weight:600;
+
+text-align:left;
+
+}
+
+.log-table td{
+
+padding:14px;
+
+border-bottom:1px solid #eceff4;
+
+font-size:14px;
+
+vertical-align:top;
+
+}
+
+.log-table tbody tr{
+
+transition:.2s;
+
+}
+
+.log-table tbody tr:hover{
+
+background:#f8fbff;
+
+}
+
+/*=========================================================
+BADGES
+=========================================================*/
+
+.badge{
+
+display:inline-block;
+
+padding:6px 14px;
+
+border-radius:30px;
+
+font-size:12px;
+
+font-weight:bold;
+
+color:white;
+
+letter-spacing:.5px;
+
+}
+
+.data{
+
+background:#10b981;
+
+}
+
+.status{
+
+background:#2563eb;
+
+}
+
+.warning{
+
+background:#f59e0b;
+
+}
+
+.error{
+
+background:#ef4444;
+
+}
+
+.ota{
+
+background:#8b5cf6;
+
+}
+
+.other{
+
+background:#64748b;
+
+}
+
+/*=========================================================
+MESSAGE
+=========================================================*/
+
+.msg{
+
+line-height:1.5;
+
+}
+
+.msg strong{
+
+display:block;
+
+font-weight:600;
+
+color:#1f2937;
+
+}
+
+.cause{
+
+margin-top:5px;
+
+font-size:13px;
+
+color:#6b7280;
+
+}
+
+/*=========================================================
+PAGINATION
+=========================================================*/
+
+.pagination{
+
+margin-top:25px;
+
+display:flex;
+
+justify-content:center;
+
+align-items:center;
+
+gap:18px;
+
+flex-wrap:wrap;
+
+}
+
+.page-btn{
+
+background:#2563eb;
+
+color:white;
+
+text-decoration:none;
+
+padding:11px 20px;
+
+border-radius:8px;
+
+font-weight:600;
+
+transition:.25s;
+
+}
+
+.page-btn:hover{
+
+background:#1d4ed8;
+
+}
+
+.page-info{
+
+font-weight:600;
+
+color:#374151;
+
+padding:10px 18px;
+
+background:white;
+
+border-radius:8px;
+
+box-shadow:0 2px 8px rgba(0,0,0,.08);
+
+}
+
+/*=========================================================
+RESPONSIVE
+=========================================================*/
+
+@media(max-width:900px){
+
+.container{
+
+padding:15px;
+
+}
+
+.cards{
+
+grid-template-columns:1fr;
+
+}
+
+.card p{
+
+font-size:28px;
+
+}
+
+.brand h1{
+
+font-size:22px;
+
+}
+
+.topbar{
+
+padding:18px;
+
+flex-direction:column;
+
+align-items:flex-start;
+
+gap:15px;
+
+}
+
+.topnav{
+
+width:100%;
+
+display:grid;
+
+grid-template-columns:1fr;
+
+gap:10px;
+
+}
+
+.topnav a{
+
+text-align:center;
+
+}
+
+.log-table{
+
+min-width:950px;
+
+}
+
 }
 
 </style>
-</head>
 
-<body>
+</style>
 
-    <div class="header">
-        <h1>📡 Device Event Logger</h1>
+{% endblock %}
+
+{% block header %}
+
+<header class="topbar">
+
+    <div class="brand">
+
+        <div class="brand-icon">
+            📜
+        </div>
+
+        <div>
+
+            <h1>Device Event Logger</h1>
+
+            <span>Real-Time Device Telemetry & Event Monitoring</span>
+
+        </div>
+
     </div>
-<div id="log-box"></div>
 
-    <!-- <select id="deviceFilter"> -->
-        <table class="log-table">
+    <nav class="topnav">
 
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Time</th>
-                    <th>Device ID</th>
-                    <th>Device Name</th>
-                    <th>Village</th>
-                    <th>Status</th>
-                    <th>Message</th>
-                </tr>
+        <a href="{% url 'dashboard' %}">
+            📊 Dashboard
+        </a>
+
+        <a href="{% url 'device_status_dashboard' %}">
+            💚 Device Status
+        </a>
+
+        <a class="active" href="{% url 'device_logs_page' %}">
+            📜 Device Logs
+        </a>
+
+    </nav>
+
+</header>
+
+{% endblock %}
+
+{% block content %}
+
+<div class="container">
+
+    <div class="cards">
+
+        <div class="card">
+            <h2>Total Logs</h2>
+            <p>{{ page_obj.paginator.count }}</p>
+        </div>
+
+        <div class="card">
+            <h2>Today's Events</h2>
+            <p>{{ status_count }}</p>
+        </div>
+
+        <div class="card">
+            <h2>Warnings</h2>
+            <p>{{ warning_count }}</p>
+        </div>
+
+        <div class="card">
+            <h2>Errors</h2>
+            <p>{{ error_count }}</p>
+        </div>
+
+    </div>
+
+    <input
+        class="search"
+        type="text"
+        id="searchBox"
+        placeholder="Search Device ID, Name, Village, Status..."
+        onkeyup="filterLogs(this.value)"
+    >
+
+    <div class="section">
+
+        <h2>Recent Device Events</h2>
+
+        <div class="table-responsive">
+
+            <table class="log-table" id="logTable">
+
+                <thead>
+
+                    <tr>
+
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Device ID</th>
+                        <th>Device Name</th>
+                        <th>Village</th>
+                        <th>Status</th>
+                        <th>Message</th>
+
+                    </tr>
+
                 </thead>
-            
+
                 <tbody>
 
-                    {% for log in logs %}
-                    
-                    <tr>
-                    
-                        <td>{{ log.timestamp|date:"d M Y" }}</td>
-                    
-                        <td>{{ log.timestamp|date:"H:i:s" }}</td>
-                    
-                        <td>{{ log.device_id }}</td>
-                    
-                        <td>{{ log.device_name }}</td>
-                    
-                        <td>{{ log.village }}</td>
-                    
-                        <td>
-                            <span class="badge {{ log.event_type }}">
-                                {{ log.event_type }}
-                            </span>
-                        </td>
-                    
-                        <td>{{ log.message }}<br>{{ log.cause }}</td>
-                    
-                    </tr>
-                    
-                    {% endfor %}
-                    
-                    </tbody>
-            
-            </table>
-            {% with request.GET.urlencode as querystring %}
+                {% for log in logs %}
 
-            <div style="margin-top:15px;">
-            
-                {% if page_obj.has_previous %}
-                    <a href="?{{ querystring }}&page={{ page_obj.previous_page_number }}">
-                        ⬅ Prev
-                    </a>
-                {% endif %}
-            
-                <span style="margin:0 10px;">
-                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-                </span>
-            
-                {% if page_obj.has_next %}
-                    <a href="?{{ querystring }}&page={{ page_obj.next_page_number }}">
-                        Next ➡
-                    </a>
-                {% endif %}
-            
-            </div>
-            
-            {% endwith %}
+                    <tr>
+                        <td>{{ log.timestamp|date:"d M Y" }}</td>
+
+<td>{{ log.timestamp|date:"H:i:s" }}</td>
+
+<td>{{ log.device_id }}</td>
+
+<td>{{ log.device_name }}</td>
+
+<td>{{ log.village }}</td>
+
+<td>
+
+{% if log.event_type == "DATA" %}
+
+<span class="badge data">
+    DATA
+</span>
+
+{% elif log.event_type == "STATUS" %}
+
+<span class="badge status">
+    STATUS
+</span>
+
+{% elif log.event_type == "WARNING" %}
+
+<span class="badge warning">
+    WARNING
+</span>
+
+{% elif log.event_type == "ERROR" %}
+
+<span class="badge error">
+    ERROR
+</span>
+
+{% elif log.event_type == "OTA" %}
+
+<span class="badge ota">
+    OTA
+</span>
+
+{% else %}
+
+<span class="badge other">
+    {{ log.event_type }}
+</span>
+
+{% endif %}
+
+</td>
+
+<td>
+
+<div class="msg">
+
+<strong>{{ log.message }}</strong>
+
+{% if log.cause %}
+<div class="cause">
+
+{{ log.cause }}
+
+</div>
+{% endif %}
 
 </div>
 
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+
+<div class="pagination">
+
+{% if page_obj.has_previous %}
+
+<a class="page-btn"
+href="?page={{ page_obj.previous_page_number }}">
+
+← Previous
+
+</a>
+
+{% endif %}
+
+
+<div class="page-info">
+
+Page {{ page_obj.number }}
+of
+{{ page_obj.paginator.num_pages }}
+
+</div>
+
+
+{% if page_obj.has_next %}
+
+<a class="page-btn"
+href="?page={{ page_obj.next_page_number }}">
+
+Next →
+
+</a>
+
+{% endif %}
+
+</div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+
 <script>
-const socket = new WebSocket("ws://127.0.0.1:8000/ws/logs/");
 
-socket.onmessage = function(event) {
-    const data = JSON.parse(event.data);
-    console.log("LOG:", data);
+// =====================================================
+// Search Filter
+// =====================================================
 
-    // Example: append to page
-    const logBox = document.getElementById("log-box");
-    if (logBox) {
-        const div = document.createElement("div");
-        div.innerText = `${data.device_id} - ${data.message}`;
-        logBox.appendChild(div);
-    }
+function filterLogs(value){
+
+    value = value.toLowerCase();
+
+    document.querySelectorAll("#logTable tbody tr")
+    .forEach(function(row){
+
+        row.style.display =
+            row.innerText.toLowerCase().includes(value)
+            ? ""
+            : "none";
+
+    });
+
+}
+
+// =====================================================
+// Auto Refresh every 30 seconds
+// =====================================================
+
+// Uncomment if you want automatic page refresh
+// setTimeout(function(){
+//     location.reload();
+// },30000);
+
+
+// =====================================================
+// Live WebSocket Updates
+// =====================================================
+
+const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+
+const socket = new WebSocket(
+    protocol + "://" + window.location.host + "/ws/logs/"
+);
+
+socket.onopen = function(){
+
+    console.log("Connected to Device Log WebSocket");
+
 };
+
+socket.onclose = function(){
+
+    console.log("Disconnected from Device Log WebSocket");
+
+};
+
+socket.onerror = function(error){
+
+    console.log(error);
+
+};
+
+socket.onmessage = function(event){
+
+    const data = JSON.parse(event.data);
+
+    console.log(data);
+
+    addLogRow(data);
+
+};
+
+
+// =====================================================
+// Insert new row at top
+// =====================================================
+
+function badge(type){
+
+    switch(type){
+
+        case "DATA":
+            return '<span class="badge data">DATA</span>';
+
+        case "STATUS":
+            return '<span class="badge status">STATUS</span>';
+
+        case "WARNING":
+            return '<span class="badge warning">WARNING</span>';
+
+        case "ERROR":
+            return '<span class="badge error">ERROR</span>';
+
+        case "OTA":
+            return '<span class="badge ota">OTA</span>';
+
+        default:
+            return '<span class="badge other">'+type+'</span>';
+
+    }
+
+}
+
+function addLogRow(log){
+
+    const tbody = document.querySelector("#logTable tbody");
+
+    if(!tbody) return;
+
+    const row = document.createElement("tr");
+
+    const d = new Date(log.timestamp);
+
+    row.innerHTML = `
+
+        <td>${d.toLocaleDateString()}</td>
+
+        <td>${d.toLocaleTimeString()}</td>
+
+        <td>${log.device_id || "-"}</td>
+
+        <td>${log.device_name || "-"}</td>
+
+        <td>${log.village || "-"}</td>
+
+        <td>${badge(log.event_type)}</td>
+
+        <td>
+
+            <div class="msg">
+
+                <strong>${log.message || ""}</strong>
+
+                <div class="cause">
+
+                    ${log.cause || ""}
+
+                </div>
+
+            </div>
+
+        </td>
+
+    `;
+
+    tbody.insertBefore(row, tbody.firstChild);
+
+    // Keep only latest 100 rows
+
+    while(tbody.rows.length > 100){
+
+        tbody.deleteRow(tbody.rows.length-1);
+
+    }
+
+}
+
 </script>
 
-</body>
-</html>
+{% endblock %}

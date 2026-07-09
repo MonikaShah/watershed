@@ -27,6 +27,7 @@ from .services import (
     get_tb_token,
     get_tb_devices,
     get_device_status,
+    update_device_status,
 )
 
 TB_URL = settings.TB_URL
@@ -1188,17 +1189,13 @@ def device_logs(request):
 #     )
 
 
-
-
 def device_logs_page(request):
 
     token = get_tb_token()
 
     devices = get_tb_devices(token)
 
-    logs = []
-
-    now = timezone.now()
+    now = timezone.localtime(timezone.now())
 
 
     # Find SAMBHAV ThingsBoard device
@@ -1206,13 +1203,14 @@ def device_logs_page(request):
 
     for d in devices:
 
-        if "SAMBHAV" in d.get("name","").upper():
+        if "SAMBHAV" in d.get("name", "").upper():
 
             tb_device_id = d["id"]["id"]
             break
 
 
     if not tb_device_id:
+
         return render(
             request,
             "ingestion/device_logs.html",
@@ -1223,70 +1221,282 @@ def device_logs_page(request):
         )
 
 
-    # Get all device latest status
+    # Get latest telemetry status
     latest_status = get_device_latest_status(
         token,
         tb_device_id
     )
 
 
+    # Device metadata dictionary
     metadata = {
         d.device_id.replace("SAMBHAV_", "").strip(): d
         for d in DeviceMetadata.objects.all()
     }
 
-    for device_id, data in latest_status.items():
 
+    # -----------------------------------
+    # Generate new events
+    # -----------------------------------
+
+    for device_id, data in latest_status.items():
+        status_count = 0
+        warning_count = 0
+        error_count = 00
         if device_id not in metadata:
             continue
 
+
         device = metadata[device_id]
+
+
         last_seen = data["time"]
+
         battery = data.get("battery")
+
         rssi = data.get("rssi")
 
+
+        # Convert pandas timestamp
         if hasattr(last_seen, "to_pydatetime"):
+
             last_seen = last_seen.to_pydatetime()
+
+
+        # Make timezone aware
+        if timezone.is_naive(last_seen):
+
+            last_seen = timezone.make_aware(last_seen)
+
+
+        last_seen = timezone.localtime(last_seen)
+
 
         diff = now - last_seen
 
+
+
+        # -------------------------------
+        # Decide event
+        # -------------------------------
+
         if diff <= timedelta(minutes=60):
+
             event_type = "STATUS"
+
             message = "Device online"
+
             cause = ""
+            status_count += 1
+
         elif diff <= timedelta(minutes=90):
+
             event_type = "WARNING"
-            message = f"Telemetry delayed by {int(diff.total_seconds()/60)} minutes"
+
+            message = (
+                f"Telemetry delayed by "
+                f"{int(diff.total_seconds()/60)} minutes"
+            )
+
             cause = ""
+            warning_count += 1
+
         else:
+
             if battery is not None and battery < 11.5:
+
                 cause = "Possible low battery"
 
+
             elif rssi is not None and rssi < 10:
+
                 cause = "Possible weak GSM signal"
 
-            else:
-                cause = "Power loss / Network issue (cannot determine exactly)"
-            
-            event_type = "ERROR"
-            message = f"No telemetry received for {int(diff.total_seconds()/3600)} hours"
 
-        logs.append({
-            "timestamp": last_seen,
-            "device_id": device.device_id,
-            "device_name": device.device_name,
-            "village": device.village,
-            "district": device.district,
-            "category": device.category,
-            "event_type": event_type,
-            "message": message,
-            "cause": cause,
-        })
-    logs.sort(
-        key=lambda x:x["timestamp"],
-        reverse=True
+            else:
+
+                cause = (
+                    "Power loss / Network issue "
+                    "(cannot determine exactly)"
+                )
+
+
+            event_type = "ERROR"
+
+            message = (
+                f"No telemetry received for "
+                f"{int(diff.total_seconds()/3600)} hours[ ({int(diff.total_seconds()/60)} minutes)]"
+            )
+
+            error_count += 1
+        # -------------------------------
+        # Check last event
+        # -------------------------------
+
+        latest_event = (
+            DeviceEventLog.objects
+            .filter(
+                device_id=device.device_id
+            )
+            .order_by("-timestamp")
+            .first()
+        )
+
+
+        new_event_key = (
+            f"{event_type}_{message}"
+        )
+
+
+        old_event_key = None
+
+
+        if latest_event:
+
+            old_event_key = (
+                f"{latest_event.event_type}_"
+                f"{latest_event.message}"
+            )
+
+
+
+        # Save only changed events
+
+        if new_event_key != old_event_key:
+
+
+            DeviceEventLog.objects.create(
+
+                device_id=device.device_id,
+
+                event_type=event_type,
+
+                message=message,
+
+                extra={
+
+                    "cause": cause,
+
+                    "battery": battery,
+
+                    "rssi": rssi,
+
+                    "last_seen": str(last_seen),
+
+                    "device_name": device.device_name,
+
+                    "village": device.village,
+
+                    "district": device.district,
+
+                    "category": device.category
+
+                }
+
+            )
+
+
+
+    # -----------------------------------
+    # Fetch logs from database
+    # -----------------------------------
+
+    event_logs = (
+        DeviceEventLog.objects
+        .all()
+        .order_by("-timestamp")[:200]
     )
 
+
+    # -----------------------------------
+    # Add metadata for display
+    # -----------------------------------
+
+    logs = []
+
+
+    metadata_full = {
+        d.device_id: d
+        for d in DeviceMetadata.objects.all()
+    }
+
+
+    for log in event_logs:
+
+
+        device = metadata_full.get(
+            log.device_id
+        )
+
+
+        extra = log.extra or {}
+
+
+        logs.append({
+
+            "timestamp": log.timestamp,
+
+            "device_id": log.device_id,
+
+
+            "device_name": (
+                device.device_name
+                if device
+                else extra.get(
+                    "device_name",
+                    "-"
+                )
+            ),
+
+
+            "village": (
+                device.village
+                if device
+                else extra.get(
+                    "village",
+                    "-"
+                )
+            ),
+
+
+            "district": (
+                device.district
+                if device
+                else extra.get(
+                    "district",
+                    "-"
+                )
+            ),
+
+
+            "category": (
+                device.category
+                if device
+                else extra.get(
+                    "category",
+                    "-"
+                )
+            ),
+
+
+            "event_type": log.event_type,
+
+
+            "message": log.message,
+
+
+            "cause": extra.get(
+                "cause",
+                ""
+            )
+
+        })
+
+
+
+    # -----------------------------------
+    # Pagination
+    # -----------------------------------
 
     paginator = Paginator(
         logs,
@@ -1298,12 +1508,37 @@ def device_logs_page(request):
         request.GET.get("page")
     )
 
+    today = timezone.localdate()
+
+    today_events = DeviceEventLog.objects.filter(
+        timestamp__date=today
+    )
+
+
+    status_count = today_events.filter(
+        event_type="STATUS"
+    ).count()
+
+
+    warning_count = today_events.filter(
+        event_type="WARNING"
+    ).count()
+
+
+    error_count = today_events.filter(
+        event_type="ERROR"
+    ).count()
 
     return render(
         request,
         "ingestion/device_logs.html",
         {
             "logs": page_obj,
-            "page_obj": page_obj
+            "page_obj": page_obj,
+            "status_count": status_count,
+            "warning_count": warning_count,
+            "error_count": error_count
         }
     )
+
+        

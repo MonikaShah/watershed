@@ -1,5 +1,6 @@
 from django.db import models
 
+from django.utils import timezone
 # Create your models here.
 class Device(models.Model):
     id = models.UUIDField(primary_key=True)
@@ -121,23 +122,57 @@ class DeviceStatus(models.Model):
 class DeviceEventLog(models.Model):
 
     EVENT_TYPES = (
-        ("DATA", "Data"),
-        ("STATUS", "Status"),
-        ("OTA", "OTA"),
+        ("ONLINE", "Online"),
+        ("OFFLINE", "Offline"),
+        ("WARNING", "Warning"),
         ("ERROR", "Error"),
+        ("DATA", "Data"),
+        ("OTA", "OTA"),
     )
 
-    device_id = models.CharField(max_length=50)
-    event_type = models.CharField(max_length=20, choices=EVENT_TYPES)
+    device_id = models.CharField(
+        max_length=50,
+        db_index=True
+    )
+
+    event_type = models.CharField(
+        max_length=20,
+        choices=EVENT_TYPES,
+        db_index=True
+    )
 
     message = models.TextField()
 
-    timestamp = models.DateTimeField(auto_now_add=True)
+    timestamp = models.DateTimeField(
+        default=timezone.now,
+        db_index=True
+    )
 
-    extra = models.JSONField(null=True, blank=True)
+    extra = models.JSONField(
+        null=True,
+        blank=True
+    )
+
 
     class Meta:
         ordering = ["-timestamp"]
 
+
     def __str__(self):
-        return f"{self.device_id} - {self.event_type}"
+        return f"{self.device_id} | {self.event_type}"
+    
+
+class DeviceCurrentStatus(models.Model):
+
+    device_id=models.CharField(
+        max_length=50,
+        unique=True
+    )
+
+    status=models.CharField(
+        max_length=20
+    )
+
+    updated=models.DateTimeField(
+        auto_now=True
+    )

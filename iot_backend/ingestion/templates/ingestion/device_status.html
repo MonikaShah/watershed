@@ -1,13 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+{% extends "ingestion/base.html" %}
 
-<title>Device Status Dashboard</title>
+{% block title %}
+Device Status
+{% endblock %}
 
+{% block extra_css %}
 <style>
-
+    
 *{
     margin:0;
     padding:0;
@@ -33,7 +32,116 @@ body{
     font-size:24px;
     color:#2d3e50;
 }
+/* ---------------- HEADER ---------------- */
 
+.topbar{
+
+    position:sticky;
+    top:0;
+    z-index:1000;
+
+    background:#fff;
+
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+
+    padding:18px 35px;
+
+    box-shadow:0 5px 18px rgba(0,0,0,.08);
+
+    border-bottom:1px solid #e8edf4;
+
+}
+
+.brand{
+
+    display:flex;
+    align-items:center;
+    gap:16px;
+
+}
+
+.brand-icon{
+
+    width:54px;
+    height:54px;
+
+    border-radius:14px;
+
+    background:linear-gradient(135deg,#0d6efd,#4fa3ff);
+
+    color:#fff;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    font-size:26px;
+
+    box-shadow:0 8px 20px rgba(13,110,253,.25);
+
+}
+
+.brand h1{
+
+    margin:0;
+    font-size:28px;
+    color:#243447;
+
+}
+
+.brand span{
+
+    display:block;
+    margin-top:4px;
+
+    color:#7d8da1;
+
+    font-size:14px;
+
+}
+
+.topnav{
+
+    display:flex;
+    gap:14px;
+
+}
+
+.topnav a{
+
+    text-decoration:none;
+
+    color:#495057;
+
+    padding:11px 18px;
+
+    border-radius:10px;
+
+    font-weight:600;
+
+    transition:.25s;
+
+}
+
+.topnav a:hover{
+
+    background:#eef5ff;
+
+    color:#0d6efd;
+
+}
+
+.topnav .active{
+
+    background:#0d6efd;
+
+    color:white;
+
+    box-shadow:0 8px 18px rgba(13,110,253,.25);
+
+}
 .container{
     max-width:1400px;
     margin:auto;
@@ -182,46 +290,111 @@ tr:hover{
 
 }
 
-@media(max-width:768px){
+@media(max-width:900px){
 
-.header h1{
-
-    font-size:20px;
-
-}
-
-.cards{
-
-    grid-template-columns:1fr;
-
-}
-
-.container{
-
-    padding:10px;
-
-}
-
-th,td{
-
-    font-size:13px;
-
-}
-
-}
-
+    .topbar{
+    
+        flex-direction:column;
+    
+        align-items:flex-start;
+    
+        gap:18px;
+    
+        padding:18px;
+    
+    }
+    
+    .brand{
+    
+        width:100%;
+    
+    }
+    
+    .brand h1{
+    
+        font-size:22px;
+    
+    }
+    
+    .brand span{
+    
+        font-size:13px;
+    
+    }
+    
+    .topnav{
+    
+        width:100%;
+    
+        display:grid;
+    
+        grid-template-columns:1fr;
+    
+        gap:10px;
+    
+    }
+    
+    .topnav a{
+    
+        text-align:center;
+    
+    }
+    
+    .container{
+    
+        padding:15px;
+    
+    }
+    
+    .cards{
+    
+        grid-template-columns:1fr;
+    
+    }
+    
+    }
 </style>
+{% endblock %}
 
-</head>
 
-<body>
+{% block header %}
 
-<div class="header">
+<header class="topbar">
 
-<h1>📡 Device Health Dashboard</h1>
+    <div class="brand">
 
-</div>
+        <div class="brand-icon">
+            📡
+        </div>
 
+        <div>
+            <h1>Device Health Dashboard</h1>
+            <span>Watershed IoT Monitoring System</span>
+        </div>
+
+    </div>
+
+    <nav class="topnav">
+
+        <a href="{% url 'dashboard' %}">
+            📊 Dashboard
+        </a>
+
+        <a class="active" href="{% url 'device_status_dashboard' %}">
+            💚 Device Status
+        </a>
+
+        <a href="{% url 'device_logs_page' %}">
+            📜 Device Logs
+        </a>
+
+    </nav>
+
+</header>
+
+{% endblock %}
+
+{% block content %}
 <div class="container">
 
 <div class="cards">
@@ -436,9 +609,11 @@ onkeyup="filterWeather(this.value)"
 </div>
 
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <script>
-
+    
 function filterWater(value){
 
     value=value.toLowerCase();
@@ -478,10 +653,6 @@ function filterWater(value){
     location.reload();
     },30000);
 
-
-
 </script>
+{% endblock %}
 
-</body>
-
-</html>
