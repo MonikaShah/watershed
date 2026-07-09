@@ -454,6 +454,35 @@ border-radius:8px;
 box-shadow:0 2px 8px rgba(0,0,0,.08);
 
 }
+.legend-box{
+    margin:15px 0;
+    border:1px solid #ddd;
+    border-radius:6px;
+    background:#fff;
+}
+
+.legend-box summary{
+    cursor:pointer;
+    padding:12px 15px;
+    font-weight:600;
+    background:#f8f9fa;
+    user-select:none;
+}
+
+.legend-box[open] summary{
+    border-bottom:1px solid #ddd;
+}
+
+.legend-item{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px 15px;
+}
+
+.legend-item:not(:last-child){
+    border-bottom:1px solid #f0f0f0;
+}
 
 /*=========================================================
 RESPONSIVE
@@ -570,9 +599,26 @@ min-width:950px;
 {% endblock %}
 
 {% block content %}
+<details class="legend-box">
+    <summary><strong>Event Severity Guide</strong></summary>
 
+    <div class="legend-item">
+        <span class="badge status">STATUS</span>
+        <span>Telemetry received within the last 60 minutes.</span>
+    </div>
+
+    <div class="legend-item">
+        <span class="badge warning">WARNING</span>
+        <span>Telemetry delayed (60–90 minutes).</span>
+    </div>
+
+    <div class="legend-item">
+        <span class="badge error">ERROR</span>
+        <span>No telemetry received for more than 90 minutes.</span>
+    </div>
+</details>
 <div class="container">
-
+    
     <div class="cards">
 
         <div class="card">
@@ -608,7 +654,14 @@ min-width:950px;
     <div class="section">
 
         <h2>Recent Device Events</h2>
-
+        <div class="status-note">
+            <h4>Status Definitions</h4>
+            <ul>
+                {% for note in status_note %}
+                    <li>{{ note }}</li>
+                {% endfor %}
+            </ul>
+        </div><hr><br>
         <div class="table-responsive">
 
             <table class="log-table" id="logTable">

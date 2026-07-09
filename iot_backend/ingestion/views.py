@@ -1100,7 +1100,14 @@ def device_status_dashboard(request):
         "inactive_count": sum(
             1 for d in rows+water 
             if d["status"]=="Inactive"
-        )
+        ),
+        # Add this
+        "status_note": [
+            "🟢 Online: Telemetry received within the last 60 minutes.",
+            "🔴 Offline: No telemetry received for 60 minutes to 24 hours.",
+            "🟠 Inactive: No telemetry received for more than 24 hours.",
+            # "ℹ️ Event Log Severity: STATUS (≤60 min), WARNING (60–90 min), ERROR (>90 min)."
+        ]
     }
 
 )
@@ -1537,7 +1544,25 @@ def device_logs_page(request):
             "page_obj": page_obj,
             "status_count": status_count,
             "warning_count": warning_count,
-            "error_count": error_count
+            "error_count": error_count,
+            # Add this
+        "event_legend": [
+            {
+                "class": "status",
+                "label": "STATUS",
+                "description": "Telemetry received within the last 60 minutes."
+            },
+            {
+                "class": "warning",
+                "label": "WARNING",
+                "description": "Telemetry delayed (60–90 minutes)."
+            },
+            {
+                "class": "error",
+                "label": "ERROR",
+                "description": "No telemetry received for more than 90 minutes."
+            }
+        ]
         }
     )
 

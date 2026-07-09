@@ -289,6 +289,35 @@ tr:hover{
     background:#ea5455;
 
 }
+.legend-box{
+    margin:15px 0;
+    border:1px solid #ddd;
+    border-radius:6px;
+    background:#fff;
+}
+
+.legend-box summary{
+    cursor:pointer;
+    padding:12px 15px;
+    font-weight:600;
+    background:#f8f9fa;
+    user-select:none;
+}
+
+.legend-box[open] summary{
+    border-bottom:1px solid #ddd;
+}
+
+.legend-item{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px 15px;
+}
+
+.legend-item:not(:last-child){
+    border-bottom:1px solid #f0f0f0;
+}
 
 @media(max-width:900px){
 
@@ -389,12 +418,30 @@ tr:hover{
         </a>
 
     </nav>
-
+    
 </header>
 
 {% endblock %}
 
 {% block content %}
+<details class="legend-box">
+    <summary><strong>Device Status Guide</strong></summary>
+
+    <div class="legend-item">
+        <span class="legend-circle online"></span>
+        <span>🟢 <strong>Online</strong> – Telemetry received within the last 60 minutes.</span>
+    </div>
+
+    <div class="legend-item">
+        <span class="legend-circle offline"></span>
+        <span>🔴 <strong>Offline</strong> – No telemetry received for 60 minutes to 24 hours.</span>
+    </div>
+
+    <div class="legend-item">
+        <span class="legend-circle inactive"></span>
+        <span>🟠 <strong>Inactive</strong> – No telemetry received for more than 24 hours.</span>
+    </div>
+</details>
 <div class="container">
 
 <div class="cards">
