@@ -932,15 +932,18 @@ def get_device_latest_status(token, tb_device_id):
     r.raise_for_status()
 
     data = r.json()
-
+    print(data.keys())
 
     last_seen = {}
 
 
     for key, values in data.items():
-
+        
+        print(key, len(values))
+        print(repr(key))
+    
         for item in values:
-
+            
             try:
 
                 parsed = json.loads(
@@ -983,18 +986,35 @@ def get_device_latest_status(token, tb_device_id):
                     ).tz_convert(
                         "Asia/Kolkata"
                     )
+                if device_id == "00100028":
+                    print("=" * 60)
+                    print("Telemetry key :", repr(key))
+                    print("Device_ID     :", parsed.get("Device_ID"))
+                    print("Payload ts    :", parsed.get("timestamp"))
+                    print("TB ts         :", item["ts"])
+                    print("Converted ts  :", ts)
+                    print("Now           :", pd.Timestamp.now(tz="Asia/Kolkata"))
+                    print("=" * 60)
 
+                # last_seen[device_id] = {
 
-                last_seen[device_id] = {
+                #     "time":ts,
 
-                    "time":ts,
+                #     "payload":parsed,
+                #     "battery": battery,
 
-                    "payload":parsed,
-                    "battery": battery,
+                #     "rssi": rssi,
 
-                    "rssi": rssi,
+                # }
+                current = last_seen.get(device_id)
 
-                }
+                if current is None or ts > current["time"]:
+                    last_seen[device_id] = {
+                        "time": ts,
+                        "payload": parsed,
+                        "battery": battery,
+                        "rssi": rssi,
+                    }
 
 
             except Exception as e:
@@ -1238,6 +1258,11 @@ def device_status_dashboard(request):
 
         device = d.device_id.replace("SAMBHAV_", "").strip()
 
+        if device == "00100028":
+            print("DB device_id :", repr(d.device_id))
+            print("Lookup key   :", repr(device))
+            print("Found        :", device in last_seen)
+            print("Latest data  :", last_seen.get(device))
         latest_data = last_seen.get(device)
 
         if latest_data is None:
@@ -1288,7 +1313,10 @@ def device_status_dashboard(request):
 
         }
 
-
+        if device == "00100028":
+            print("Latest :", latest)
+            print("Diff   :", diff)
+            print("Status :", status)
         # Separate devices
 
         if d.category == "water_level":
