@@ -599,36 +599,36 @@ def dashboard_v5(request):
         }
 
     )
-# def dashboard_compare(request):
+def dashboard_compare(request):
 
-#     device_meta = DeviceMetadata.objects.all()
+    device_meta = DeviceMetadata.objects.all()
 
-#     device_map = {}
+    device_map = {}
 
-#     for d in device_meta:
+    for d in device_meta:
 
-#         device_map[d.device_id] = {
+        device_map[d.device_id] = {
 
-#             "village": d.village,
-#             "district": d.district,
-#             "category": d.category,
-#             "lat": d.latitude,
-#             "lon": d.longitude,
-#             "name": d.device_name
+            "village": d.village,
+            "district": d.district,
+            "category": d.category,
+            "lat": d.latitude,
+            "lon": d.longitude,
+            "name": d.device_name
 
-#         }
+        }
 
-#     return render(
+    return render(
 
-#         request,
+        request,
 
-#         "ingestion/dashboard_compare.html",
+        "ingestion/dashboard_compare.html",
 
-#         {
-#             "device_map": device_map
-#         }
+        {
+            "device_map": device_map
+        }
 
-#     )
+    )
 
 @api_view(["GET"])
 
