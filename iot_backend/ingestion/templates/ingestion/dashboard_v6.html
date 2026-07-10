@@ -27,7 +27,7 @@ Real-Time IoT Monitoring & Analytics
     padding:25px;
 }
 
-    .header{
+    .dashboard-toolbar{
         background:#ffffff;
         display:flex;
         justify-content:space-between;
@@ -37,20 +37,20 @@ Real-Time IoT Monitoring & Analytics
         box-shadow:0 2px 8px rgba(0,0,0,.05);
     }
 
-    .header-left h1{
+    .dashboard-toolbar-left h1{
         margin:0;
         font-size:26px;
         font-weight:600;
         color:#1f2937;
     }
 
-    .header-left p{
+    .dashboard-toolbar-left p{
         margin-top:6px;
         color:#6b7280;
         font-size:14px;
     }
 
-    .header-right{
+    .dashboard-toolbar-right{
         display:flex;
         gap:10px;
     }
@@ -683,14 +683,14 @@ Real-Time IoT Monitoring & Analytics
 {% block content %}
 
 
-        <div class="header">
+        <div class="dashboard-toolbar">
 
-            <div class="header-left">
+            <div class="dashboard-toolbar-left">
                 <!-- <h1>Living Lab Monitoring Dashboard</h1>
                 <p>Real-time monitoring and historical telemetry analytics</p> -->
             </div>
         
-            <div class="header-right">
+            <div class="dashboard-toolbar-right">
         
                 <button class="tab-btn active"
                         onclick="openTab('single', this)">
