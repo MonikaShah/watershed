@@ -599,6 +599,236 @@ def dashboard_v5(request):
         }
 
     )
+# def dashboard_compare(request):
+
+#     device_meta = DeviceMetadata.objects.all()
+
+#     device_map = {}
+
+#     for d in device_meta:
+
+#         device_map[d.device_id] = {
+
+#             "village": d.village,
+#             "district": d.district,
+#             "category": d.category,
+#             "lat": d.latitude,
+#             "lon": d.longitude,
+#             "name": d.device_name
+
+#         }
+
+#     return render(
+
+#         request,
+
+#         "ingestion/dashboard_compare.html",
+
+#         {
+#             "device_map": device_map
+#         }
+
+#     )
+
+@api_view(["GET"])
+
+def device_comparison_api(request):
+
+    selected_devices = request.GET.get(
+        "devices",
+        ""
+    ).split(",")
+
+    metric = request.GET.get(
+        "metric",
+        ""
+    )
+
+    from_date = request.GET.get(
+        "from_date"
+    )
+
+    to_date = request.GET.get(
+        "to_date"
+    )
+
+    if (
+        not selected_devices
+        or not metric
+        or not from_date
+        or not to_date
+    ):
+        return Response({
+            "labels": [],
+            "datasets": [],
+            "nodata": ["No data available"]
+        })
+
+    token = get_tb_token()
+
+    devices = get_tb_devices(token)
+
+    tb_device_id = None
+
+    for d in devices:
+
+        if "SAMBHAV" in d["name"].upper():
+
+            tb_device_id = d["id"]["id"]
+
+            break
+
+    if not tb_device_id:
+
+        return Response({
+            "error": "TB Device not found"
+        })
+
+    start_ts = int(
+
+        pd.Timestamp(from_date)
+        .tz_localize("Asia/Kolkata")
+        .timestamp() * 1000
+
+    )
+
+    end_ts = int(
+
+        (
+            pd.Timestamp(to_date)
+            + pd.Timedelta(days=1)
+        )
+        .tz_localize("Asia/Kolkata")
+        .timestamp() * 1000
+
+    )
+
+    all_times = set()
+
+    device_frames = {}
+
+    # ----------------------------------
+    # FETCH EACH DEVICE
+    # ----------------------------------
+
+    for device in selected_devices:
+
+        df = get_telemetry(
+
+            token=token,
+
+            tb_device_id=tb_device_id,
+
+            selected_device=device,
+
+            start_ts=start_ts,
+
+            end_ts=end_ts
+
+        )
+
+        if df.empty:
+
+            continue
+
+        if metric not in df.columns:
+
+            print(
+                f"{metric} not found in {device}"
+            )
+
+            continue
+
+        device_frames[device] = df
+
+        all_times.update(
+            df["time"].tolist()
+        )
+
+    # ----------------------------------
+    # NO DATA
+    # ----------------------------------
+
+    if not device_frames:
+
+        return Response({
+
+            "labels": [],
+
+            "datasets": []
+
+        })
+
+    labels = sorted(all_times)
+    
+
+    datasets = []
+
+    # ----------------------------------
+    # BUILD CHART DATA
+    # ----------------------------------
+
+    for device, df in device_frames.items():
+
+        lookup = dict(
+
+            zip(
+
+                df["time"],
+
+                pd.to_numeric(
+                    df[metric],
+                    errors="coerce"
+                )
+
+            )
+
+        )
+
+        values = []
+
+        for t in labels:
+
+            v = lookup.get(t)
+
+            if pd.isna(v):
+
+                values.append(None)
+
+            else:
+
+                values.append(
+                    float(v)
+                )
+
+        datasets.append({
+
+            "label": device,
+
+            "data": values,
+
+            "borderWidth": 2,
+
+            "tension": 0.3
+
+        })
+    label_strings = [
+
+        t.strftime(
+            "%d-%b-%Y %I:%M %p"
+        )
+
+        for t in labels
+
+    ]
+    return Response({
+
+        "labels": label_strings,
+
+        "datasets": datasets,
+         "nodata": []
+
+    })
 
 def get_device_last_seen(token, tb_device_id):
 

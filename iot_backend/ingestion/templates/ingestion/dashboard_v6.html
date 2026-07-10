@@ -1,21 +1,31 @@
-    {% load custom_tags %}
-    <!DOCTYPE html>
-    <html>
+{% extends "ingestion/base.html" %}
 
-    <head>
+{% block title %}
+Watershed Dashboard
+{% endblock %}
 
-    <title>Living Lab Data Dashboard</title>
+{% block page_icon %}
+🌊
+{% endblock %}
 
+{% block page_title %}
+Watershed Dashboard
+{% endblock %}
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% block page_subtitle %}
+Real-Time IoT Monitoring & Analytics
+{% endblock %}
 
-    <style>
+{% block extra_css %}
+<style>
 
-    body{
-        font-family:Arial;
-        background:#f4f6fb;
-        margin:0;
-    }
+/* Dashboard-specific CSS only */
+
+.container{
+    max-width:1450px;
+    margin:auto;
+    padding:25px;
+}
 
     .header{
         background:#ffffff;
@@ -317,6 +327,8 @@
         from{transform:rotate(0deg);}
         to{transform:rotate(360deg);}
     }
+
+    
 @media (max-width:768px){
 
     #mainCanvas{
@@ -337,31 +349,7 @@
 
 }
 
-    /* ==========================
-    Top Header
-    ========================== */
-
-    .topbar{
-        background:#1f3c88;
-        color:#fff;
-        padding:18px 35px;
-        display:flex;
-        justify-content:space-between;
-        align-items:center;
-        box-shadow:0 2px 10px rgba(0,0,0,.12);
-    }
-
-    .topbar h2{
-        margin:0;
-        font-size:24px;
-        font-weight:600;
-    }
-
-    .subtitle{
-        font-size:14px;
-        opacity:.9;
-    }
-
+   
     /* ==========================
     Filter Card
     ========================== */
@@ -656,16 +644,50 @@
 
         }
     </style>
+    {% endblock %}
+    {% block header %}
 
-    </head>
+<header class="topbar">
 
-    <body>
+    <div class="brand">
+
+        <div class="brand-icon">
+            🌊
+        </div>
+
+        <div>
+            <h1>Living Lab IoT Dashboard</h1>
+            <span>Real-time monitoring and historical telemetry analytics</span>
+        </div>
+
+    </div>
+
+    <nav class="topnav">
+
+        <a class="active" href="{% url 'dashboard' %}">
+            📊 Dashboard
+        </a>
+
+        <a href="{% url 'device_status_dashboard' %}">
+            💚 Device Status
+        </a>
+
+        <a href="{% url 'device_logs_page' %}">
+            📜 Device Logs
+        </a>
+
+    </nav>
+</header>
+
+{% endblock %}
+{% block content %}
+
 
         <div class="header">
 
             <div class="header-left">
-                <h1>Living Lab Monitoring Dashboard</h1>
-                <p>Real-time monitoring and historical telemetry analytics</p>
+                <!-- <h1>Living Lab Monitoring Dashboard</h1>
+                <p>Real-time monitoring and historical telemetry analytics</p> -->
             </div>
         
             <div class="header-right">
@@ -684,7 +706,7 @@
         
         </div>
     <div id="singleTab">
-        <h2>📊 IoT Dashboard  </h2>
+       
 
         <div class="filter-card">
 
@@ -2661,5 +2683,7 @@ comparevillageSelect.addEventListener("change", () => {
                 </div>
             </div>
         </div>
-    </body>
+    </div>
+
+    {% endblock %}
     </html>

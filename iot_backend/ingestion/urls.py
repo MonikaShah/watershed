@@ -21,10 +21,10 @@ urlpatterns = [
     path("device-logs-ui/", views.device_logs_page, name="device_logs_page"),
     path("device-status-ui/", views.device_status_dashboard, name="device_status_dashboard"),
     # NEW API
-    # path(
-    #     'api/device-comparison/',
-    #     views.device_comparison_api,
-    #     name='device_comparison_api'
-    # ),
+    path(
+        'api/device-comparison/',
+        views.device_comparison_api,
+        name='device_comparison_api'
+    ),
     
 ]
