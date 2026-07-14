@@ -742,7 +742,36 @@ Real-Time IoT Monitoring & Analytics
                         <option value="">-- Select Device --</option>
                     </select>
                 </div>
-        
+                <!-- Interval -->
+                <div class="control-group">
+                    <label>Interval</label>
+                    <select name="interval" id="interval">
+
+                    <option value="5min"
+                    {% if request.GET.interval == "5min" %}selected{% endif %}>
+                    5 Minutes
+                    </option>
+                    
+                    
+                    <option value="15min"
+                    {% if request.GET.interval == "15min" %}selected{% endif %}>
+                    15 Minutes
+                    </option>
+                    
+                    
+                    <option value="30min"
+                    {% if request.GET.interval == "30min" %}selected{% endif %}>
+                    30 Minutes
+                    </option>
+                    
+                    
+                    <option value="1h"
+                    {% if request.GET.interval == "1h" %}selected{% endif %}>
+                    1 Hour
+                    </option>
+                    
+                    </select>
+                </div>
                 <!-- Date Range -->
                 <div class="control-group">
                     <label>Date Range</label>
@@ -938,7 +967,50 @@ Real-Time IoT Monitoring & Analytics
                         </select>
         
                     </div>
-        
+                    <!-- Interval -->
+                <div class="control-group">
+                    <label>Interval</label>
+                    <select name="compareinterval" id="compareinterval">
+
+                    <option value="5min"
+                    {% if request.GET.compareinterval == "5min" %}selected{% endif %}>
+                    5 Minutes
+                    </option>
+                    
+                    
+                    <option value="15min"
+                    {% if request.GET.compareinterval == "15min" %}selected{% endif %}>
+                    15 Minutes
+                    </option>
+                    
+                    
+                    <option value="30min"
+                    {% if request.GET.compareinterval == "30min" %}selected{% endif %}>
+                    30 Minutes
+                    </option>
+                    
+                    
+                    <option value="1h"
+                    {% if request.GET.compareinterval == "1h" %}selected{% endif %}>
+                    1 Hour
+                    </option>
+                    
+                    </select>
+                </div>
+                <!-- Date Range -->
+                <div class="control-group">
+                    <label>Date Range</label>
+
+                    <select id="compareDatePreset">
+                        <option value="custom" selected>Custom</option>
+                        <option value="today">Today</option>
+                        <option value="yesterday">Yesterday</option>
+                        <option value="24h">Last 24 Hours</option>
+                        <option value="7d">Last 7 Days</option>
+                        <option value="30d">Last 30 Days</option>
+                        <option value="month">This Month</option>
+                    </select>
+                </div>
                     <!-- From -->
         
                     <div class="control-group">
@@ -1099,7 +1171,6 @@ Real-Time IoT Monitoring & Analytics
     // =====================================
     // DATA
     // =====================================
-
     const rawData = JSON.parse(
         document.getElementById(
             "table-data"
@@ -1773,6 +1844,7 @@ Real-Time IoT Monitoring & Analytics
     // =====================================
 
     function loadDashboard(){
+        const interval = document.getElementById("interval").value;
 
         const device =
             deviceSelect.value;
@@ -1809,16 +1881,12 @@ Real-Time IoT Monitoring & Analytics
 
             + `&from_date=${from}`
 
-            + `&to_date=${to}`;
+            + `&to_date=${to}`
+            + `&interval=${interval}`;
 
         window.location.href = url;
         
-        setTimeout(function () {
-        window.location.href = url;
-    }, 100);
-
-
-    }
+       }
 
     // =====================================
     // DOWNLOAD CSV
@@ -2019,6 +2087,72 @@ Real-Time IoT Monitoring & Analytics
             to.toISOString().split("T")[0];
 
     }
+
+    const compareDatePreset = document.getElementById("compareDatePreset");
+
+    compareDatePreset.addEventListener("change", updateCompareDateRange);
+
+    document.getElementById("comparefromDate")
+        .addEventListener("change", () => {
+            compareDatePreset.value = "custom";
+        });
+
+    document.getElementById("comparetoDate")
+        .addEventListener("change", () => {
+            compareDatePreset.value = "custom";
+        });
+
+    function updateCompareDateRange() {
+
+        const preset = compareDatePreset.value;
+
+        const fromInput = document.getElementById("comparefromDate");
+        const toInput   = document.getElementById("comparetoDate");
+
+        const custom = preset === "custom";
+
+        fromInput.disabled = !custom;
+        toInput.disabled = !custom;
+
+        if (custom)
+            return;
+
+        const today = new Date();
+
+        let from = new Date(today);
+        let to = new Date(today);
+
+        switch (preset) {
+
+            case "today":
+                break;
+
+            case "yesterday":
+                from.setDate(from.getDate() - 1);
+                to.setDate(to.getDate() - 1);
+                break;
+
+            case "24h":
+                from.setDate(from.getDate() - 1);
+                break;
+
+            case "7d":
+                from.setDate(from.getDate() - 6);
+                break;
+
+            case "30d":
+                from.setDate(from.getDate() - 29);
+                break;
+
+            case "month":
+                from = new Date(today.getFullYear(), today.getMonth(), 1);
+                break;
+        }
+
+        fromInput.value = from.toISOString().split("T")[0];
+        toInput.value   = to.toISOString().split("T")[0];
+    }
+
     function loadCompareMetrics() {
 
         const category = comparecategorySelect.value;
@@ -2169,19 +2303,9 @@ function openTab(tab, btn) {
 
         document.getElementById("comparisonResultCard").style.display = "none";
 
-        const today = new Date();
-
-        const sevenDaysAgo = new Date();
-
-        sevenDaysAgo.setDate(today.getDate() - 6);
-
-        document.getElementById("comparefromDate").value =
-            sevenDaysAgo.toISOString().split("T")[0];
-
-        document.getElementById("comparetoDate").value =
-            today.toISOString().split("T")[0];
-
-    };
+        compareDatePreset.value = "7d";
+        updateCompareDateRange();
+            };
 // =====================================================
 // COMPARE DEVICE TAB
 // =====================================================
@@ -2307,7 +2431,7 @@ function loadcompareVillages() {
 // =====================================================
 
 function loadcompareDevices() {
-
+    
     const container =
         document.getElementById("deviceList");
 
@@ -2400,7 +2524,7 @@ function loadcompareDevices() {
 // =====================================================
 
 function compareDevices() {
-
+    const interval = document.getElementById("compareinterval").value;
     const devices =
 
         Array.from(
@@ -2467,7 +2591,10 @@ function compareDevices() {
 
         + "&to_date="
 
-        + comparetoDate.value;
+        + comparetoDate.value
+
+        + "&interval="
+        + encodeURIComponent(interval);
 
 
     fetch(url)

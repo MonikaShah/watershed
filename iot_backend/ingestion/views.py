@@ -15,13 +15,10 @@ from.models import DeviceMetadata,DeviceStatus,DeviceEventLog
 # from django.db import connection
 import pandas as pd
 from django.http import HttpResponse
-from django.shortcuts import render
-from .models import Device, DeviceMetadata
-from rest_framework.decorators import api_view
 # views.py
 from django.http import JsonResponse
 from django.db import connections
-from .utils import is_device_online
+
 from django.conf import settings
 from .services import (
     get_tb_token,
@@ -188,7 +185,8 @@ def get_telemetry(
     tb_device_id,
     selected_device,
     start_ts,
-    end_ts
+    end_ts,
+    interval="5min"
 ):
 
     headers = {
@@ -203,6 +201,7 @@ def get_telemetry(
 
         f"{TB_URL}/api/plugins/telemetry/DEVICE/"
         f"{tb_device_id}/keys/timeseries"
+        
 
     )
 
@@ -279,7 +278,11 @@ def get_telemetry(
                     utc=True
                 )
 
-                
+                start_time = pd.to_datetime(start_ts, unit="ms", utc=True)
+                end_time = pd.to_datetime(end_ts, unit="ms", utc=True)
+
+                if ts < start_time or ts >= end_time:
+                    continue
 
                 if not isinstance(parsed, dict):
                     continue
@@ -302,21 +305,13 @@ def get_telemetry(
                     .replace("SAMBHAV_", "")
                     .strip()
                 )
-                device_name = parsed.get("Device_ID", "")
-
-                clean_device = device_name.replace("SAMBHAV_", "").strip()
-                selected_clean = selected_device.replace("SAMBHAV_", "").strip()
-
+               
                 # print("Telemetry Device_ID :", repr(device_name))
                 # print("Clean telemetry     :", repr(clean_device))
                 # print("Selected device     :", repr(selected_clean))
 
                 if clean_device != selected_clean:
                     # print("SKIPPED")
-                    continue
-
-                # print("MATCHED")
-                if clean_device != selected_clean:
                     continue
 
                 # =================================
@@ -385,7 +380,8 @@ def get_telemetry(
     # REMOVE DUPLICATES
     # =====================================
 
-    df = df.groupby("time").first().reset_index()
+    df = df.sort_values("time")
+    df = df.drop_duplicates("time", keep="last")
 
     # =====================================
     # FORMAT TIME
@@ -395,6 +391,49 @@ def get_telemetry(
         utc=True
     ).dt.tz_convert("Asia/Kolkata")
 
+    # =====================================
+    # WLD TIME INTERVAL AGGREGATION
+    # =====================================
+
+    if interval:
+
+            df = df.sort_values("time")
+
+            # keep only numeric telemetry columns
+            numeric_cols = []
+
+            for col in df.columns:
+
+                if col not in ["time", "device_id"]:
+
+                    df[col] = pd.to_numeric(
+                        df[col],
+                        errors="coerce"
+                    )
+
+                    if df[col].notna().any():
+                        numeric_cols.append(col)
+
+
+            if numeric_cols:
+
+                temp = (
+                    df.set_index("time")[numeric_cols]
+                    .resample(interval)
+                    .mean()
+                    .reset_index()
+                )
+
+
+                # restore device id
+                temp["device_id"] = selected_device
+
+                df = temp
+
+
+    print("AFTER RESAMPLE")
+    print(df.head())
+    print(df.shape)
 
     # df["time"] = pd.to_datetime(
     #     df["time"],
@@ -424,6 +463,12 @@ def get_telemetry(
     #     "DEVICE TS :",
     #     parsed.get("timestamp")
     # )
+
+    print("========== BEFORE RETURN ==========")
+    print(df.head())
+    print(df.columns)
+    print(df.shape)
+    print("===================================")
     return df
 # ----------------------------
 # Dashboard page
@@ -451,7 +496,10 @@ def dashboard_v5(request):
     selected_device = request.GET.get("device")
     from_date = request.GET.get("from_date")
     to_date = request.GET.get("to_date")
-
+    interval = request.GET.get(
+        "interval",
+        "5min"
+    )
     device_meta = DeviceMetadata.objects.all()
 
     # =====================================
@@ -481,23 +529,9 @@ def dashboard_v5(request):
     # FETCH DATA
     # =====================================
 
-    if (
-        tb_device_id
-        and
-        selected_device
-        and
-        from_date
-        and
-        to_date
-    ):
+    if (tb_device_id and selected_device and from_date and to_date ):
 
-        start_ts = int(
-
-            pd.Timestamp(from_date)
-            .tz_localize("Asia/Kolkata")
-            .timestamp() * 1000
-
-        )
+        start_ts = int(pd.Timestamp(from_date).tz_localize("Asia/Kolkata").timestamp() * 1000)
 
         end_ts = int(
 
@@ -522,7 +556,8 @@ def dashboard_v5(request):
 
             start_ts=start_ts,
 
-            end_ts=end_ts
+            end_ts=end_ts,
+            interval=interval
 
         )
 
@@ -573,7 +608,13 @@ def dashboard_v5(request):
             "name": d.device_name
 
         }
+    print("TABLE DATA SAMPLE")
+    print(table_data[:2])
 
+    table_json = json.dumps(
+        table_data,
+        default=str
+    )
     return render(
 
         request,
@@ -594,7 +635,8 @@ def dashboard_v5(request):
 
             "to_date": to_date,
 
-            "device_map": device_map
+            "device_map": device_map,
+            "table_json": table_json,
 
         }
 
@@ -633,7 +675,7 @@ def dashboard_compare(request):
 @api_view(["GET"])
 
 def device_comparison_api(request):
-
+    interval = request.GET.get("interval", "5min")
     selected_devices = request.GET.get(
         "devices",
         ""
@@ -713,17 +755,18 @@ def device_comparison_api(request):
 
     for device in selected_devices:
 
-        df = get_telemetry(
+        df = get_telemetry_compare(
 
             token=token,
 
             tb_device_id=tb_device_id,
 
             selected_device=device,
-
+            metric=metric,
             start_ts=start_ts,
 
-            end_ts=end_ts
+            end_ts=end_ts,
+            interval=interval
 
         )
 
@@ -830,87 +873,87 @@ def device_comparison_api(request):
 
     })
 
-def get_device_last_seen(token, tb_device_id):
+# def get_device_last_seen(token, tb_device_id):
 
-    headers = {
-        "X-Authorization": f"Bearer {token}"
-    }
+#     headers = {
+#         "X-Authorization": f"Bearer {token}"
+#     }
 
-    # -------------------------------
-    # Get available telemetry keys
-    # -------------------------------
+#     # -------------------------------
+#     # Get available telemetry keys
+#     # -------------------------------
 
-    keys_url = (
-        f"{TB_URL}/api/plugins/telemetry/DEVICE/"
-        f"{tb_device_id}/keys/timeseries"
-    )
+#     keys_url = (
+#         f"{TB_URL}/api/plugins/telemetry/DEVICE/"
+#         f"{tb_device_id}/keys/timeseries"
+#     )
 
-    r = requests.get(keys_url, headers=headers)
-    r.raise_for_status()
+#     r = requests.get(keys_url, headers=headers)
+#     r.raise_for_status()
 
-    keys = r.json()
+#     keys = r.json()
 
-    if not keys:
-        return {}
+#     if not keys:
+#         return {}
 
-    keys_str = ",".join(keys)
+#     keys_str = ",".join(keys)
 
-    # -------------------------------
-    # Download recent telemetry
-    # -------------------------------
+#     # -------------------------------
+#     # Download recent telemetry
+#     # -------------------------------
 
-    end_ts = int(pd.Timestamp.utcnow().timestamp() * 1000)
+#     end_ts = int(pd.Timestamp.utcnow().timestamp() * 1000)
 
-    start_ts = end_ts - (30 * 24 * 60 * 60 * 1000)   # last 30 days
+#     start_ts = end_ts - (30 * 24 * 60 * 60 * 1000)   # last 30 days
 
-    data_url = (
-        f"{TB_URL}/api/plugins/telemetry/DEVICE/"
-        f"{tb_device_id}/values/timeseries"
-        f"?keys={keys_str}"
-        f"&startTs={start_ts}"
-        f"&endTs={end_ts}"
-        f"&limit=50000"
-    )
+#     data_url = (
+#         f"{TB_URL}/api/plugins/telemetry/DEVICE/"
+#         f"{tb_device_id}/values/timeseries"
+#         f"?keys={keys_str}"
+#         f"&startTs={start_ts}"
+#         f"&endTs={end_ts}"
+#         f"&limit=50000"
+#     )
 
-    r = requests.get(data_url, headers=headers)
-    r.raise_for_status()
+#     r = requests.get(data_url, headers=headers)
+#     r.raise_for_status()
 
-    data = r.json()
+#     data = r.json()
 
-    last_seen = {}
+#     last_seen = {}
 
-    for tb_key, values in data.items():
+#     for tb_key, values in data.items():
 
-        for item in values:
+#         for item in values:
 
-            try:
+#             try:
 
-                parsed = json.loads(item["value"])
+#                 parsed = json.loads(item["value"])
 
-                device = parsed.get("Device_ID", "").replace("SAMBHAV_", "").strip()
+#                 device = parsed.get("Device_ID", "").replace("SAMBHAV_", "").strip()
 
-                ts = parsed.get("timestamp")
+#                 ts = parsed.get("timestamp")
 
-                if not device or not ts:
-                    continue
+#                 if not device or not ts:
+#                     continue
 
-                ts = pd.to_datetime(
-                    ts,
-                    unit="s",
-                    utc=True
-                ).tz_convert("Asia/Kolkata")
+#                 ts = pd.to_datetime(
+#                     ts,
+#                     unit="s",
+#                     utc=True
+#                 ).tz_convert("Asia/Kolkata")
 
-                if (
-                    device not in last_seen
-                    or
-                    ts > last_seen[device]
-                ):
-                    last_seen[device] = ts
+#                 if (
+#                     device not in last_seen
+#                     or
+#                     ts > last_seen[device]
+#                 ):
+#                     last_seen[device] = ts
 
-            except Exception:
-                continue
+#             except Exception:
+#                 continue
 
-    return last_seen
+#     return last_seen
 
 def get_device_latest_status(token, tb_device_id):
 
@@ -921,6 +964,7 @@ def get_device_latest_status(token, tb_device_id):
     url = (
         f"{TB_URL}/api/plugins/telemetry/DEVICE/"
         f"{tb_device_id}/values/timeseries"
+         f"?limit=50000"
     )
 
 
@@ -986,15 +1030,15 @@ def get_device_latest_status(token, tb_device_id):
                     ).tz_convert(
                         "Asia/Kolkata"
                     )
-                if device_id == "00100028":
-                    print("=" * 60)
-                    print("Telemetry key :", repr(key))
-                    print("Device_ID     :", parsed.get("Device_ID"))
-                    print("Payload ts    :", parsed.get("timestamp"))
-                    print("TB ts         :", item["ts"])
-                    print("Converted ts  :", ts)
-                    print("Now           :", pd.Timestamp.now(tz="Asia/Kolkata"))
-                    print("=" * 60)
+                # if device_id == "00100028":
+                #     print("=" * 60)
+                #     print("Telemetry key :", repr(key))
+                #     print("Device_ID     :", parsed.get("Device_ID"))
+                #     print("Payload ts    :", parsed.get("timestamp"))
+                #     print("TB ts         :", item["ts"])
+                #     print("Converted ts  :", ts)
+                #     print("Now           :", pd.Timestamp.now(tz="Asia/Kolkata"))
+                #     print("=" * 60)
 
                 # last_seen[device_id] = {
 
@@ -1089,9 +1133,12 @@ def export_csv(request):
         df = df.fillna("")
         if "time" in df.columns:
             df["time"] = pd.to_datetime(df["time"], errors="coerce")
-            df["time"] = df["time"].dt.tz_localize("UTC").dt.tz_convert("Asia/Kolkata")
-            df["time"] = df["time"].dt.strftime("%d-%b-%Y %I:%M %p")
 
+        if df["time"].dt.tz is None:
+            df["time"] = df["time"].dt.tz_localize("Asia/Kolkata")
+        else:
+            df["time"] = df["time"].dt.tz_convert("Asia/Kolkata")
+        
         device = request.POST.get("device", "device")
 
         device_name = request.POST.get(
@@ -1258,11 +1305,11 @@ def device_status_dashboard(request):
 
         device = d.device_id.replace("SAMBHAV_", "").strip()
 
-        if device == "00100028":
-            print("DB device_id :", repr(d.device_id))
-            print("Lookup key   :", repr(device))
-            print("Found        :", device in last_seen)
-            print("Latest data  :", last_seen.get(device))
+        # if device == "00100028":
+        #     print("DB device_id :", repr(d.device_id))
+        #     print("Lookup key   :", repr(device))
+        #     print("Found        :", device in last_seen)
+        #     print("Latest data  :", last_seen.get(device))
         latest_data = last_seen.get(device)
 
         if latest_data is None:
@@ -1313,10 +1360,10 @@ def device_status_dashboard(request):
 
         }
 
-        if device == "00100028":
-            print("Latest :", latest)
-            print("Diff   :", diff)
-            print("Status :", status)
+        # if device == "00100028":
+        #     print("Latest :", latest)
+        #     print("Diff   :", diff)
+        #     print("Status :", status)
         # Separate devices
 
         if d.category == "water_level":
@@ -1505,9 +1552,7 @@ def device_logs_page(request):
     # -----------------------------------
 
     for device_id, data in latest_status.items():
-        status_count = 0
-        warning_count = 0
-        error_count = 00
+        
         if device_id not in metadata:
             continue
 
@@ -1552,7 +1597,7 @@ def device_logs_page(request):
             message = "Device online"
 
             cause = ""
-            status_count += 1
+            # status_count += 1
 
         elif diff <= timedelta(minutes=90):
 
@@ -1564,7 +1609,7 @@ def device_logs_page(request):
             )
 
             cause = ""
-            warning_count += 1
+            # warning_count += 1
 
         else:
 
@@ -1587,48 +1632,31 @@ def device_logs_page(request):
 
 
             event_type = "ERROR"
-
+            hours = int(diff.total_seconds() // 3600)
+            minutes = int(diff.total_seconds() // 60)
             message = (
-                f"No telemetry received for "
-                f"{int(diff.total_seconds()/3600)} hours[ ({int(diff.total_seconds()/60)} minutes)]"
+                f"No telemetry received for {hours} hours "
+                f"({minutes} minutes)"
             )
 
-            error_count += 1
-        # -------------------------------
+            # error_count += 1
+        # -----------------------------------
         # Check last event
-        # -------------------------------
+        # -----------------------------------
 
         latest_event = (
             DeviceEventLog.objects
-            .filter(
-                device_id=device.device_id
-            )
+            .filter(device_id=device.device_id)
             .order_by("-timestamp")
             .first()
         )
 
-
-        new_event_key = (
-            f"{event_type}_{message}"
+        previous_type = (
+            latest_event.event_type
+            if latest_event else None
         )
 
-
-        old_event_key = None
-
-
-        if latest_event:
-
-            old_event_key = (
-                f"{latest_event.event_type}_"
-                f"{latest_event.message}"
-            )
-
-
-
-        # Save only changed events
-
-        if new_event_key != old_event_key:
-
+        if previous_type != event_type:
 
             DeviceEventLog.objects.create(
 
@@ -1641,19 +1669,12 @@ def device_logs_page(request):
                 extra={
 
                     "cause": cause,
-
                     "battery": battery,
-
                     "rssi": rssi,
-
                     "last_seen": str(last_seen),
-
                     "device_name": device.device_name,
-
                     "village": device.village,
-
                     "district": device.district,
-
                     "category": device.category
 
                 }
@@ -1824,4 +1845,200 @@ def device_logs_page(request):
         }
     )
 
-        
+def get_telemetry_compare(
+    token,
+    tb_device_id,
+    selected_device,
+    metric,
+    start_ts,
+    end_ts,
+    interval="5min"
+):
+
+    headers = {
+        "X-Authorization": f"Bearer {token}"
+    }
+
+    # -----------------------------------
+    # Get available keys
+    # -----------------------------------
+
+    keys_url = (
+        f"{TB_URL}/api/plugins/telemetry/DEVICE/"
+        f"{tb_device_id}/keys/timeseries"
+    )
+
+    r = requests.get(
+        keys_url,
+        headers=headers
+    )
+
+    r.raise_for_status()
+
+    available_keys = r.json()
+    
+    if not available_keys:
+        return pd.DataFrame()
+
+    # -----------------------------------
+    # Only request the metric we need
+    # -----------------------------------
+
+    keys_str = ",".join(available_keys)
+    # -----------------------------------
+    # Fetch telemetry
+    # -----------------------------------
+
+    data_url = (
+
+        f"{TB_URL}/api/plugins/telemetry/DEVICE/"
+        f"{tb_device_id}/values/timeseries"
+
+        f"?keys={keys_str}"
+
+        f"&startTs={start_ts}"
+
+        f"&endTs={end_ts}"
+
+        f"&limit=50000"
+
+    )
+
+    r = requests.get(
+        data_url,
+        headers=headers
+    )
+
+    r.raise_for_status()
+
+    data = r.json()
+
+    rows = []
+
+    # -----------------------------------
+    # Parse
+    # -----------------------------------
+
+    for values in data.values():
+
+        for item in values:
+
+            try:
+
+                parsed = json.loads(item["value"])
+
+                device_name = parsed.get("Device_ID", "")
+
+                clean_device = (
+                    device_name
+                    .replace("SAMBHAV_", "")
+                    .strip()
+                )
+
+                selected_clean = (
+                    selected_device
+                    .replace("SAMBHAV_", "")
+                    .strip()
+                )
+
+                if clean_device != selected_clean:
+                    continue
+
+                device_ts = parsed.get("timestamp")
+
+                if not device_ts:
+                    continue
+
+                ts = pd.to_datetime(
+                    device_ts,
+                    unit="s",
+                    utc=True
+                )
+
+                start_time = pd.to_datetime(
+                    start_ts,
+                    unit="ms",
+                    utc=True
+                )
+
+                end_time = pd.to_datetime(
+                    end_ts,
+                    unit="ms",
+                    utc=True
+                )
+
+                if ts < start_time or ts >= end_time:
+                    continue
+
+                flat = flatten_json(parsed)
+
+                value = flat.get(metric)
+
+                if value is None:
+                    continue
+
+                rows.append({
+
+                    "time": ts,
+
+                    metric: value,
+
+                    "device_id": device_name
+
+                })
+
+            except Exception:
+
+                continue
+
+    if not rows:
+        return pd.DataFrame()
+
+    df = pd.DataFrame(rows)
+
+    # -----------------------------------
+    # Remove duplicates
+    # -----------------------------------
+
+    df = (
+        df.sort_values("time")
+          .drop_duplicates("time", keep="last")
+    )
+
+    # -----------------------------------
+    # Convert timezone
+    # -----------------------------------
+
+    df["time"] = (
+        pd.to_datetime(df["time"], utc=True)
+          .dt.tz_convert("Asia/Kolkata")
+    )
+
+    # -----------------------------------
+    # Numeric conversion
+    # -----------------------------------
+
+    df[metric] = pd.to_numeric(
+        df[metric],
+        errors="coerce"
+    )
+
+    # -----------------------------------
+    # Resample
+    # -----------------------------------
+
+    df = (
+
+        df.set_index("time")[[metric]]
+
+        .resample(interval)
+
+        .mean()
+
+        .reset_index()
+
+    )
+
+    df["device_id"] = selected_device
+
+    return df
