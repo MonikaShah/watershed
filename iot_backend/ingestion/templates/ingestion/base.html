@@ -151,8 +151,10 @@
             color:#fff;
         }
     </style>
-
-    {% block extra_css %}{% endblock %}
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    {% block extra_css %}
+    {% endblock %}
 </head>
 
 <body>
@@ -168,8 +170,10 @@
 <footer>
     © 2026 Watershed Monitoring System
 </footer>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
+{% block extra_js %}
 
-{% block extra_js %}{% endblock %}
+{% endblock %}
 
 </body>
 </html>

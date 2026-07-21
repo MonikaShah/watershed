@@ -26,5 +26,27 @@ urlpatterns = [
         views.device_comparison_api,
         name='device_comparison_api'
     ),
-    
+    # ingestion/urls.py
+]
+urlpatterns += [
+
+    path(
+        "map/",
+        views.dashboard_map,
+        name="dashboard_map"
+    ),
+
+    path(
+        "api/map/devices/",
+        views.device_map_api,
+        name="device_map_api"
+    ),
+
+    path(
+        "api/map/chart/",
+        views.device_chart_api,
+        name="device_chart_api"
+    ),
+
+
 ]

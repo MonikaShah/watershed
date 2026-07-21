@@ -59,103 +59,6 @@ def ota(request, device_type):
     })
 
 
-# def get_telemetry(token, device_id, start_ts, end_ts):
-#     # first get available keys
-#     keys_url = f"{TB_URL}/api/plugins/telemetry/DEVICE/{device_id}/keys/timeseries"
-
-#     headers = {
-#         "X-Authorization": f"Bearer {token}"
-#     }
-
-#     keys_resp = requests.get(keys_url, headers=headers)
-#     keys_resp.raise_for_status()
-
-#     keys = keys_resp.json()
-
-#     # if not keys:
-#     #     return pd.DataFrame()
-#     if not keys:
-#         print("⚠️ No keys found, using fallback keys")
-#         keys = ["temperature", "humidity", "battery"]  # adjust based on your device
-
-#     keys_str = ",".join(keys)
-
-#     data_url = (
-#         f"{TB_URL}/api/plugins/telemetry/DEVICE/{device_id}/values/timeseries"
-#         f"?keys={keys_str}"
-#         f"&startTs={start_ts}"
-#         f"&endTs={end_ts}"
-#         f"&limit=50000"
-#     )
-
-#     r = requests.get(data_url, headers=headers)
-#     r.raise_for_status()
-
-#     data = r.json()
-
-#     rows = []
-
-#     for key, values in data.items():
-#         for item in values:
-#             value = item["value"]
-
-#             try:
-#                 parsed = json.loads(value)
-
-#                 if isinstance(parsed, dict):
-#                     for subk, subv in parsed.items():
-#                         rows.append({
-#                             "time": pd.to_datetime(item["ts"], unit="ms"),
-#                             "key": f"{key}_{subk}",
-#                             "value": subv
-#                         })
-#                 else:
-#                     rows.append({
-#                         "time": pd.to_datetime(item["ts"], unit="ms"),
-#                         "key": key,
-#                         "value": value
-#                     })
-#             except:
-#                 rows.append({
-#                     "time": pd.to_datetime(item["ts"], unit="ms"),
-#                     "key": key,
-#                     "value": value
-#                 })
-
-#     if not rows:
-#         return pd.DataFrame()
-
-#     df = pd.DataFrame(rows)
-
-#     pivot_df = df.pivot_table(
-#         index="time",
-#         columns="key",
-#         values="value",
-#         aggfunc="first"
-#     ).reset_index()
-
-#     print("DEVICE:", device_id)
-#     print("KEYS:", keys)
-#     print("START:", start_ts, "END:", end_ts)
-#     # print("RAW DATA:", data)
-
-#     print("\n====== DASHBOARD DEBUG ======")
-#     print("DEVICE:", device_id)
-#     print("FROM:", start_ts, "TO:", end_ts  )
-
-#     print("DF EMPTY?", df.empty)
-#     print("DF SHAPE:", df.shape)
-
-#     if not df.empty:
-#         print("COLUMNS:", df.columns.tolist())
-#         print(df.head())
-#     else:
-#         print("⚠️ DataFrame is EMPTY")
-#     return pivot_df
-# =========================================
-# FLATTEN NESTED JSON
-# =========================================
-
 def flatten_json(data, parent_key=""):
 
     items = {}
@@ -972,7 +875,9 @@ def get_device_latest_status(token, tb_device_id):
         url,
         headers=headers
     )
-
+    print("TB UUID:", tb_device_id)
+    
+    print("TB RESPONSE:", r.text[:2000])
     r.raise_for_status()
 
     data = r.json()
@@ -2042,3 +1947,171 @@ def get_telemetry_compare(
     df["device_id"] = selected_device
 
     return df
+
+# @login_required
+def dashboard_map(request):
+
+    villages = (
+        DeviceMetadata.objects
+        .values_list("village", flat=True)
+        .distinct()
+        .order_by("village")
+    )
+
+    return render(
+        request,
+        "ingestion/dashboard_map.html",
+        {
+            "villages": villages
+        }
+    )
+
+# @login_required
+def device_map_api(request):
+    category = request.GET.get("category")
+    village = request.GET.get("village")
+
+    devices = DeviceMetadata.objects.all()
+    print(devices)
+    if category and category != "All":
+        devices = devices.filter(category=category)
+
+    if village and village != "All":
+        devices = devices.filter(village=village)
+
+    response = []
+
+    for d in devices:
+        status = DeviceStatus.objects.filter(device=d).first()
+
+        if d.latitude and d.longitude:
+            response.append({
+                
+                "device_id": d.device_id,
+                "device_name": d.device_name,
+                "village": d.village,
+                "district": d.district,
+                "category": d.category,
+                "latitude": float(d.latitude),
+                "longitude": float(d.longitude),
+                "status": (
+                "Online" if status and status.online
+                else "Offline" if status
+                else "Inactive"
+                        ),
+                "battery": status.battery if status else None,
+                "last_seen": (
+                    status.last_seen.strftime("%d-%m-%Y %H:%M")
+                    if status and status.last_seen
+                    else None
+                ),
+
+            })
+
+    print("Sending", len(response), "devices")
+
+    return JsonResponse(response, safe=False)
+# @login_required
+def device_chart_api(request):
+
+    tb_device_id = request.GET.get("tb_device_id")
+    metric = request.GET.get("metric")
+    # tb_device_id = request.GET.get("tb_device_id")
+    selected_device = request.GET.get("device_id")
+    # metric = request.GET.get("metric")
+    if not selected_device:
+        return JsonResponse(
+            {"error": "device_id missing"},
+            status=400
+        )
+    if not tb_device_id:
+        return JsonResponse(
+            {"error": "Device missing"},
+            status=400
+        )
+
+    if not metric:
+        return JsonResponse(
+            {"error": "Metric missing"},
+            status=400
+        )
+
+    now = timezone.now()
+
+    start = now.replace(
+        hour=0,
+        minute=0,
+        second=0,
+        microsecond=0
+    )
+
+    telemetry = get_telemetry_compare(
+
+        token=get_tb_token(),
+
+        tb_device_id=tb_device_id,
+
+        # selected_device=None,
+        selected_device=selected_device,
+
+        metric=metric,
+
+        start_ts=int(start.timestamp() * 1000),
+
+        end_ts=int(now.timestamp() * 1000),
+
+        interval="5min"
+
+    )
+
+    # labels = []
+    # values = []
+
+    # if metric in telemetry:
+
+    #     for item in telemetry[metric]:
+
+    #         ts = datetime.fromtimestamp(
+    #             item["ts"] / 1000,
+    #             tz=timezone.get_current_timezone()
+    #         )
+
+    #         labels.append(
+    #             ts.strftime("%H:%M")
+    #         )
+
+    #         values.append(
+    #             item["value"]
+    #         )
+    labels = []
+    values = []
+
+    if not telemetry.empty:
+
+        for _, row in telemetry.iterrows():
+
+            labels.append(
+                row["time"].strftime("%H:%M")
+            )
+
+            values.append(
+                row[metric]
+            )
+    return JsonResponse({
+
+        "labels": labels,
+
+        "values": values
+
+    })
+
+
+# @login_required
+def metric_list_api(request):
+
+    category = request.GET.get("category")
+
+    return JsonResponse(
+        METRICS.get(category, []),
+        safe=False
+    )

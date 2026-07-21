@@ -1,0 +1,2041 @@
+{% extends "ingestion/base.html" %}
+{% load static %}
+
+{% block title %}
+Device Map
+{% endblock %}
+
+{% block page_icon %}
+🗺️
+{% endblock %}
+
+{% block page_title %}
+Device Map
+{% endblock %}
+
+{% block page_subtitle %}
+Spatial View of IoT Devices
+{% endblock %}
+{% block header %}
+
+<header class="topbar">
+
+    <div class="brand">
+
+        <div class="brand-icon">
+            🌊
+        </div>
+
+        <div>
+            <h3 style="margin:0;font-size:26px;">
+                Watershed Monitoring Dashboard
+            </h3>
+            <div style="color:#6b7280;font-size:14px;">
+                Real-Time IoT Monitoring & Analytics
+            </div>
+        </div>
+
+    </div>
+
+    <nav class="topnav">
+
+        <a href="{% url 'main_portal' %}">
+            🏠 Home
+        </a>
+
+        <a href="{% url 'dashboard' %}">
+            Dashboard
+        </a>
+
+        <a href="{% url 'dashboard_map' %}" class="active">
+            Device Map
+        </a>
+
+        <a href="{% url 'device_status_dashboard' %}">
+            Device Status
+        </a>
+
+        <a href="{% url 'device_logs_page' %}">
+            Device Logs
+        </a>
+
+    </nav>
+
+</header>
+
+{% endblock %}
+{% block extra_css %}
+
+<link rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<link rel="stylesheet"
+      href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+
+<link rel="stylesheet"
+      href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet">
+
+<style>
+
+:root{
+
+    --primary:#2563eb;
+    --primary-dark:#1d4ed8;
+
+    --success:#22c55e;
+    --danger:#ef4444;
+    --warning:#f59e0b;
+
+    --bg:#f4f7fb;
+
+    --card:#ffffff;
+
+    --text:#1f2937;
+
+    --muted:#64748b;
+
+    --border:#e5e7eb;
+
+    --shadow:0 10px 28px rgba(15,23,42,.08);
+
+}
+
+body{
+
+    font-family:'Inter',sans-serif;
+
+    background:var(--bg);
+
+}
+
+/*************************************************
+Dashboard Header
+*************************************************/
+
+.dashboard-title{
+
+    font-size:28px;
+    margin-bottom:2px;
+
+    font-weight:700;
+
+    color:#0f172a;
+
+}
+
+.dashboard-subtitle{
+
+    color:#64748b;
+    margin-bottom:12px;
+    margin-top:5px;
+}
+
+/*************************************************
+KPI Cards
+*************************************************/
+.kpi-card{
+    background:#fff;
+    border-radius:18px;
+    padding:22px;
+    box-shadow:0 10px 24px rgba(15,23,42,.08);
+    transition:.25s;
+}
+
+.kpi-card:hover{
+    transform:translateY(-4px);
+}
+
+.kpi-icon{
+    width:56px;
+    height:56px;
+    border-radius:14px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-size:24px;
+    flex-shrink:0;
+}
+
+.kpi-title{
+    font-size:.85rem;
+    color:#64748b;
+    margin-bottom:4px;
+}
+
+.kpi-value{
+    font-size:2rem;
+    font-weight:700;
+    color:#0f172a;
+}
+.kpi-primary{
+
+    background:#dbeafe;
+
+    color:#2563eb;
+
+}
+
+.kpi-success{
+
+    background:#dcfce7;
+
+    color:#16a34a;
+
+}
+
+.kpi-danger{
+
+    background:#fee2e2;
+
+    color:#dc2626;
+
+}
+
+.kpi-warning{
+
+    background:#fef3c7;
+
+    color:#d97706;
+
+}
+
+.kpi-title{
+
+    color:#64748b;
+
+    font-size:13px;
+
+
+    margin-bottom:5px;
+
+}
+
+
+
+/*************************************************
+Cards
+*************************************************/
+
+.card{
+
+    border:none;
+
+    border-radius:20px;
+
+    box-shadow:var(--shadow);
+
+    overflow:hidden;
+
+}
+
+.card-header{
+
+    background:#fff;
+
+    border-bottom:1px solid var(--border);
+
+    padding:18px 22px;
+
+    font-size:15px;
+
+    font-weight:600;
+
+}
+
+.card-body{
+
+    padding:22px;
+
+}
+
+/*************************************************
+Filters
+*************************************************/
+.filter-card{
+
+margin-top:15px;
+margin-bottom:20px;
+
+}
+
+.filter-card .card-header{
+
+background:#ffffff;
+
+font-weight:600;
+
+font-size:16px;
+
+border-bottom:1px solid #eef2f7;
+
+}
+
+.form-label{
+
+font-size:13px;
+
+font-weight:600;
+
+color:#64748b;
+
+margin-bottom:6px;
+
+}
+
+.form-select{
+
+height:48px;
+
+border-radius:12px;
+
+border:1px solid #dbe2ea;
+
+font-size:14px;
+
+}
+
+.form-select:focus{
+
+border-color:#2563EB;
+
+box-shadow:0 0 0 .15rem rgba(37,99,235,.15);
+
+}
+
+.btn-primary{
+
+height:48px;
+
+border-radius:12px;
+
+font-weight:600;
+
+background:#2563EB;
+
+border:none;
+
+}
+
+.btn-primary:hover{
+
+background:#1D4ED8;
+
+}
+
+.btn-outline-secondary{
+
+    height:48px;
+
+    border-radius:12px;
+
+}
+
+/*************************************************
+Map
+*************************************************/
+
+.map-wrapper{
+
+    position:relative;
+
+}
+
+#map{
+    width:100%;
+    height:70vh;
+    min-height:500px;
+    border-radius:16px;
+}
+.leaflet-container{
+
+    border-radius:16px;
+
+}
+
+/*************************************************
+Legend
+*************************************************/
+
+.legend{
+
+    position:absolute;
+
+    top:15px;
+
+    right:15px;
+
+    background:#fff;
+
+    border-radius:14px;
+
+    padding:15px;
+
+    z-index:1000;
+
+    box-shadow:0 10px 25px rgba(0,0,0,.15);
+
+}
+
+.legend-title{
+
+    font-size:.85rem;
+
+    font-weight:600;
+
+    margin-bottom:10px;
+
+}
+
+.legend-item{
+
+    display:flex;
+
+    align-items:center;
+
+    margin-bottom:8px;
+
+}
+
+.legend-dot{
+
+    width:12px;
+
+    height:12px;
+
+    border-radius:50%;
+
+    margin-right:8px;
+
+}
+
+/*************************************************
+Chart
+*************************************************/
+
+.chart-container{
+
+    height:420px;
+
+    position:relative;
+
+}
+
+#deviceChart{
+
+    height:420px !important;
+
+}
+
+/*************************************************
+Device Panel
+*************************************************/
+
+.device-info{
+
+    background:#f8fafc;
+
+    border-radius:16px;
+
+    border:1px solid var(--border);
+
+    padding:20px;
+
+}
+
+.device-info h5{
+
+    font-size:18px;
+
+    margin-bottom:20px;
+
+    font-weight:600;
+
+}
+
+.device-info table{
+
+    margin-bottom:0;
+
+}
+
+.device-info th{
+
+    width:120px;
+
+    color:#64748b;
+
+    font-weight:600;
+
+}
+
+.device-info td{
+
+    color:#0f172a;
+
+}
+
+.status-online{
+
+    color:#16a34a;
+
+    font-weight:700;
+
+}
+
+.status-offline{
+
+    color:#F59E0B;
+
+    font-weight:700;
+
+}
+
+.status-unknown{
+
+    color:#DC2626;
+
+    font-weight:700;
+
+}
+
+/*************************************************
+Loading Overlay
+*************************************************/
+
+.loading-overlay{
+
+    position:absolute;
+
+    inset:0;
+
+    background:rgba(255,255,255,.75);
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    border-radius:16px;
+
+    z-index:2000;
+
+}
+
+/*************************************************
+Empty State
+*************************************************/
+
+.empty-state{
+
+    text-align:center;
+
+    padding:70px 20px;
+
+    color:#94a3b8;
+
+}
+
+.empty-state .icon{
+
+    font-size:60px;
+
+    margin-bottom:15px;
+
+}
+
+/*************************************************
+Leaflet Popup
+*************************************************/
+
+.leaflet-popup-content-wrapper{
+    border-radius:18px;
+    box-shadow:0 12px 30px rgba(0,0,0,.18);
+    padding:0;
+    overflow:hidden;
+}
+
+.leaflet-popup-content{
+    margin:16px;
+    min-width:260px;
+}
+
+.leaflet-popup-tip{
+    box-shadow:none;
+}
+
+.leaflet-container a.leaflet-popup-close-button{
+    color:white;
+    font-size:18px;
+    top:10px;
+    right:12px;
+}
+
+/*************************************************
+Marker Cluster
+*************************************************/
+
+.marker-cluster-small{
+
+    background:#22c55e !important;
+
+}
+
+.marker-cluster-medium{
+
+    background:#3b82f6 !important;
+
+}
+
+.marker-cluster-large{
+
+    background:#ef4444 !important;
+
+}
+
+/*************************************************
+Responsive
+*************************************************/
+
+@media(max-width:1200px){
+
+    #map{
+
+        height:70vh;
+
+    }
+
+}
+
+@media(max-width:992px){
+
+    #map{
+
+        height:60vh;
+
+        min-height:450px;
+
+    }
+
+    .chart-container{
+
+        height:320px;
+
+    }
+
+}
+
+@media(max-width:768px){
+
+    .kpi-card{
+
+        margin-bottom:15px;
+        padding:16px;
+        border-radius:14px;
+
+    }
+
+    .card-body{
+
+        padding:18px;
+
+    }
+
+    #map{
+
+        height:50vh;
+
+        min-height:350px;
+
+    }
+
+    .chart-container{
+
+        height:250px;
+
+    }
+
+}
+@media (max-width:768px){
+
+.kpi-card{
+    padding:15px;
+}
+
+.kpi-icon{
+    width:45px;
+    height:45px;
+    font-size:20px;
+}
+
+.kpi-value{
+    font-size:1.4rem;
+}
+
+
+.filter-card .card-body{
+
+    padding:16px;
+
+}
+
+.form-select{
+
+    margin-bottom:8px;
+
+}
+@media (max-width:1200px){
+
+#map{
+    height:60vh;
+}
+
+}
+
+@media (max-width:992px){
+
+#map{
+    height:450px;
+}
+
+.chart-container{
+    height:300px;
+}
+
+}
+
+
+
+#map{
+    height:350px;
+}
+
+.chart-container{
+    height:250px;
+}
+
+.card-header{
+    padding:14px;
+}
+
+.card-body{
+    padding:14px;
+}
+
+
+}
+
+</style>
+
+{% endblock %}
+{% block content %}
+
+<!-- =======================================================
+Dashboard Header
+======================================================= -->
+
+<div class="container-fluid">
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+
+    <div class="text-end">
+
+        <small class="text-muted">
+            Last Refresh
+        </small>
+
+        <h6 class="mb-0" id="lastRefresh">
+            --
+        </h6>
+
+    </div>
+
+</div>
+
+<!-- =======================================================
+KPI Cards
+======================================================= -->
+
+<div class="row row-cols-2 row-cols-md-3 row-cols-xl-5 g-3 mb-4">
+
+    <div class="col">
+        <div class="kpi-card h-100">
+            <div class="d-flex align-items-center">
+                <div class="kpi-icon kpi-primary me-3">
+                    📡
+                </div>
+                <div>
+                    <div class="kpi-title">Total Devices</div>
+                    <div class="kpi-value" id="totalDevices">0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col">
+        <div class="kpi-card h-100">
+            <div class="d-flex align-items-center">
+                <div class="kpi-icon kpi-success me-3">
+                    🟢
+                </div>
+                <div>
+                    <div class="kpi-title">Online</div>
+                    <div class="kpi-value" id="onlineDevices">0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col">
+        <div class="kpi-card h-100">
+            <div class="d-flex align-items-center">
+                <div class="kpi-icon kpi-warning me-3">
+                    🟡
+                </div>
+                <div>
+                    <div class="kpi-title">Inactive</div>
+                    <div class="kpi-value" id="kpiInactive">0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col">
+        <div class="kpi-card h-100">
+            <div class="d-flex align-items-center">
+                <div class="kpi-icon kpi-danger me-3">
+                    🔴
+                </div>
+                <div>
+                    <div class="kpi-title">Offline</div>
+                    <div class="kpi-value" id="offlineDevices">0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col">
+        <div class="kpi-card h-100">
+            <div class="d-flex align-items-center">
+                <div class="kpi-icon" style="background:#FFF4CC;color:#D97706;">
+                    🏘️
+                </div>
+                <div>
+                    <div class="kpi-title">Villages</div>
+                    <div class="kpi-value" id="villageCount">
+                        {{ villages|length }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- =======================================================
+Filter Card
+======================================================= -->
+<div class="card filter-card">
+
+    <div class="card-header">
+        <i class="bi bi-funnel"></i>
+        Filter Devices
+    </div>
+
+    <div class="card-body">
+
+        <div class="row g-3">
+
+            <div class="col-12 col-sm-6 col-lg-3">
+
+                <label class="form-label">
+                    Device Category
+                </label>
+
+                <select id="category" class="form-select">
+
+                    <option value="All">
+                        All Devices
+                    </option>
+
+                    <option value="water_level">
+                        Water Level Detector
+                    </option>
+
+                    <option value="weather_station">
+                        Weather Station
+                    </option>
+
+                    <option value="flow_meter">
+                        Flow Meter
+                    </option>
+
+                </select>
+
+            </div>
+
+            <div class="col-12 col-sm-6 col-lg-3">
+
+                <label class="form-label">
+                    Metric
+                </label>
+
+                <select id="metric" class="form-select">
+                </select>
+
+            </div>
+
+            <div class="col-12 col-sm-6 col-lg-3">
+
+                <label class="form-label">
+                    Village
+                </label>
+
+                <select id="village" class="form-select">
+
+                    <option value="All">
+                        All Villages
+                    </option>
+
+                    {% for village in villages %}
+                    <option value="{{ village }}">
+                        {{ village }}
+                    </option>
+                    {% endfor %}
+
+                </select>
+
+            </div>
+
+            <div class="col-12 col-sm-6 col-lg-3 d-flex align-items-end">
+
+                <button
+                    class="btn btn-primary w-100"
+                    id="applyFilter">
+
+                    Apply Filters
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+<!-- =======================================================
+Map + Device Details
+======================================================= -->
+<div class="row g-4">
+
+    <!-- MAP -->
+    <div class="col-12 col-xl-8">
+
+        <div class="card h-100 shadow-sm border-0">
+
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+
+                <div>
+                    <h5 class="mb-0 fw-bold">
+                        🗺 Device Locations
+                    </h5>
+                    <small class="text-muted">
+                        Interactive live map
+                    </small>
+                </div>
+
+                <span class="badge bg-primary rounded-pill px-3 py-2">
+                    Live
+                </span>
+
+            </div>
+
+            <div class="card-body p-2">
+
+                <div class="map-wrapper">
+
+                    <div id="loading"
+                         class="loading-overlay"
+                         style="display:none">
+
+                        <div class="spinner-border text-primary"></div>
+
+                    </div>
+
+                    <div id="map"></div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- DEVICE DETAILS -->
+    <div class="col-12 col-xl-4">
+
+        <div class="card h-100 shadow-sm border-0">
+
+            <div class="card-header bg-white">
+
+                <h5 class="mb-0 fw-bold">
+                    📡 Device Information
+                </h5>
+
+            </div>
+
+            <div class="card-body">
+
+                <div id="emptyState" class="text-center py-5">
+
+                    <div style="font-size:55px">
+                        📍
+                    </div>
+
+                    <h5 class="mt-3">
+                        Select a Device
+                    </h5>
+
+                    <p class="text-muted mb-0">
+
+                        Tap any marker on the map to view telemetry.
+
+                    </p>
+
+                </div>
+
+                <div id="deviceInfo" style="display:none">
+
+                    <div class="text-center mb-4">
+
+                        <div class="rounded-circle bg-primary bg-opacity-10 d-inline-flex justify-content-center align-items-center"
+                             style="width:70px;height:70px;font-size:30px">
+
+                            📡
+
+                        </div>
+
+                        <h4 id="infoDevice"
+                            class="mt-3 fw-bold mb-0"></h4>
+
+                        <small id="infoVillage"
+                               class="text-muted"></small>
+
+                    </div>
+
+                    <div class="row g-3">
+
+                        <div class="col-6">
+
+                            <div class="border rounded-4 p-3 text-center">
+
+                                <div class="small text-muted">
+                                    Status
+                                </div>
+
+                                <div id="infoStatus"
+                                     class="fw-bold mt-1">
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <div class="col-6">
+
+                            <div class="border rounded-4 p-3 text-center">
+
+                                <div class="small text-muted">
+                                    Battery
+                                </div>
+
+                                <div id="infoBattery"
+                                     class="fw-bold mt-1">
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <div class="col-12">
+
+                            <div class="border rounded-4 p-3">
+
+                                <div class="small text-muted mb-2">
+
+                                    Last Seen
+
+                                </div>
+
+                                <div id="infoLastSeen"
+                                     class="fw-semibold">
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- TELEMETRY -->
+
+<div class="card shadow-sm border-0 mt-4">
+
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+
+        <div>
+
+            <h5 class="mb-0 fw-bold">
+
+                📈 Telemetry Trend
+
+            </h5>
+
+            <small class="text-muted">
+
+                Today's measurements
+
+            </small>
+
+        </div>
+
+    </div>
+
+    <div class="card-body">
+
+        <div class="chart-container">
+
+            <canvas id="deviceChart"></canvas>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- =======================================================
+Analytics
+======================================================= -->
+
+<div class="card mt-4">
+
+    <div class="card-header">
+
+        📈 Device Telemetry
+
+        <span class="float-end text-muted">
+
+            Today's Trend
+
+        </span>
+
+    </div>
+
+    <div class="card-body">
+
+        <div class="chart-container">
+
+            <canvas id="deviceChart">
+
+            </canvas>
+
+        </div>
+
+    </div>
+
+</div>
+
+</div>
+
+{% endblock %}
+{% block extra_js %}
+
+<!-- Leaflet -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Marker Cluster -->
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+
+let map;
+let markerGroup;
+let chart;
+
+let markers = {};
+let selectedDevice = null;
+let refreshTimer = null;
+
+/* ============================================================
+   Marker Icons
+============================================================ */
+
+const greenIcon = L.icon({
+    iconUrl:"https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png",
+    shadowUrl:"https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+    iconSize:[25,41],
+    iconAnchor:[12,41],
+    popupAnchor:[1,-34],
+    shadowSize:[41,41]
+});
+
+const redIcon = L.icon({
+    iconUrl:"https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
+    shadowUrl:"https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+    iconSize:[25,41],
+    iconAnchor:[12,41],
+    popupAnchor:[1,-34],
+    shadowSize:[41,41]
+});
+
+const orangeIcon = L.icon({
+    iconUrl:"https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-orange.png",
+    shadowUrl:"https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+    iconSize:[25,41],
+    iconAnchor:[12,41],
+    popupAnchor:[1,-34],
+    shadowSize:[41,41]
+});
+
+/* ============================================================
+   Startup
+============================================================ */
+
+document.addEventListener("DOMContentLoaded",function(){
+
+    initMap();
+
+    initChart();
+
+    populateMetrics();
+
+    loadDevices();
+
+    startAutoRefresh();
+
+});
+
+/* ============================================================
+   Initialize Map
+============================================================ */
+
+function initMap(){
+
+    map = L.map("map",{
+        zoomControl:true
+    }).setView([19.75,75.71],7);
+
+    L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        {
+            attribution:"Tiles © Esri"
+        }
+    ).addTo(map);
+
+    markerGroup = L.markerClusterGroup({
+        showCoverageOnHover:false,
+        spiderfyOnMaxZoom:true,
+        removeOutsideVisibleBounds:true
+    });
+
+    map.addLayer(markerGroup);
+
+}
+
+/* ============================================================
+   Initialize Chart
+============================================================ */
+
+function initChart(){
+
+    const ctx = document
+        .getElementById("deviceChart")
+        .getContext("2d");
+
+    chart = new Chart(ctx,{
+
+        type:"line",
+
+        data:{
+            labels:[],
+            datasets:[{
+                label:"Telemetry",
+                data:[],
+                borderColor:"#0d6efd",
+                backgroundColor:"rgba(13,110,253,.15)",
+                fill:true,
+                borderWidth:2,
+                pointRadius:2,
+                pointHoverRadius:5,
+                tension:0.35
+            }]
+        },
+
+        options:{
+
+            responsive:true,
+
+            maintainAspectRatio:false,
+
+            interaction:{
+                intersect:false,
+                mode:"index"
+            },
+
+            plugins:{
+                legend:{
+                    display:true
+                }
+            },
+
+            scales:{
+
+                x:{
+                    ticks:{
+                        maxTicksLimit:8
+                    }
+                },
+
+                y:{
+                    beginAtZero:false
+                }
+
+            }
+
+        }
+
+    });
+
+}
+
+/* ============================================================
+   Metric Dropdown
+============================================================ */
+
+function populateMetrics(){
+
+    const category =
+        document.getElementById("category").value;
+
+    const metric =
+        document.getElementById("metric");
+
+    metric.innerHTML = "";
+
+    let metrics = [];
+
+    switch(category){
+
+        case "water_level":
+
+            metrics = [
+                "water_level",
+                "battery",
+                "rssi",
+                "temperature"
+            ];
+
+            break;
+
+        case "weather_station":
+
+            metrics = [
+                "rainfall",
+                "humidity",
+                "temperature",
+                "pressure",
+                "wind_speed",
+                "battery"
+            ];
+
+            break;
+
+        case "flow_meter":
+
+            metrics = [
+                "flow",
+                "volume",
+                "battery"
+            ];
+
+            break;
+
+        default:
+
+            metrics = [
+                "water_level"
+            ];
+
+    }
+
+    metrics.forEach(function(item){
+
+        const option =
+            document.createElement("option");
+
+        option.value = item;
+
+        option.textContent =
+            item.replaceAll("_"," ");
+
+        metric.appendChild(option);
+
+    });
+
+}
+
+/* ============================================================
+   Filter Events
+============================================================ */
+
+document.getElementById("category")
+.addEventListener("change",function(){
+
+    populateMetrics();
+
+    resetSelection();
+
+    loadDevices();
+
+});
+
+document.getElementById("village")
+.addEventListener("change",function(){
+
+    resetSelection();
+
+    loadDevices();
+
+});
+
+document.getElementById("metric")
+.addEventListener("change",function(){
+
+    if(selectedDevice){
+
+        loadChart(selectedDevice.tb_device_id);
+
+    }
+
+});
+
+document.getElementById("applyFilter")
+.addEventListener("click",function(){
+
+    resetSelection();
+
+    loadDevices();
+
+});
+
+/* ============================================================
+   Helper
+============================================================ */
+
+function resetSelection(){
+
+    selectedDevice = null;
+
+    document.getElementById("deviceInfo").style.display = "none";
+
+    document.getElementById("emptyState").style.display = "block";
+
+    chart.data.labels = [];
+
+    chart.data.datasets[0].data = [];
+
+    chart.update();
+
+}
+/* ============================================================
+   Load Devices
+============================================================ */
+
+async function loadDevices(){
+
+const loading = document.getElementById("loading");
+
+if(loading){
+    loading.style.display="flex";
+}
+
+markerGroup.clearLayers();
+markers = {};
+
+const category = document.getElementById("category").value;
+const village = document.getElementById("village").value;
+
+const url =
+    `/custom-dashboard/api/map/devices/?category=${encodeURIComponent(category)}&village=${encodeURIComponent(village)}`;
+
+try{
+
+    const response = await fetch(url);
+
+    if(!response.ok){
+        throw new Error("Unable to load devices");
+    }
+
+    const devices = await response.json();
+    let total = 0;
+    let online = 0;
+    let offline = 0;
+
+    const bounds = [];
+
+    devices.forEach(function(device){
+
+        if(device.latitude==null || device.longitude==null){
+            return;
+        }
+
+        total++;
+
+        let icon = orangeIcon;
+
+        if(device.status==="Online"){
+            icon = greenIcon;
+            online++;
+        }
+        else if(device.status==="Offline"){
+            icon = redIcon;
+            offline++;
+        }
+
+        const marker = L.marker(
+            [
+                parseFloat(device.latitude),
+                parseFloat(device.longitude)
+            ],
+            {
+                icon:icon
+            }
+        );
+
+        marker.device = device;
+
+        marker.bindPopup(createPopup(device));
+
+        marker.on("click",function(){
+
+            selectedDevice = device;
+
+            updateDeviceInfo(device);
+
+            loadChart(
+                "d4b176a0-3d64-11f1-ba47-977177853c99",
+                "SAMBHAV_" + device.device_id
+            );
+
+        });
+
+        markers[device.device_id] = marker;
+
+        markerGroup.addLayer(marker);
+
+        bounds.push([
+            parseFloat(device.latitude),
+            parseFloat(device.longitude)
+        ]);
+
+    });
+
+    /* ================= KPI ================= */
+    document.getElementById("totalDevices").innerHTML = total;
+    document.getElementById("onlineDevices").innerHTML = online;
+    document.getElementById("offlineDevices").innerHTML = offline;
+    document.getElementById("kpiInactive").innerHTML = total - online - offline;
+
+
+    document.getElementById("lastRefresh").innerHTML =
+        new Date().toLocaleTimeString();
+
+    /* ================= Map Zoom ================= */
+
+    if(bounds.length===0){
+
+        map.setView([19.75,75.71],7);
+
+    }
+    else if(bounds.length===1){
+
+        map.setView(bounds[0],15);
+
+    }
+    else{
+
+        map.fitBounds(bounds,{
+            padding:[40,40]
+        });
+
+    }
+
+}
+catch(error){
+
+    console.error(error);
+
+    alert("Unable to load device locations.");
+
+}
+finally{
+
+    if(loading){
+        loading.style.display="none";
+    }
+
+}
+
+}
+/* ============================================================
+   Popup
+============================================================ */
+
+function createPopup(device){
+
+let statusClass = "secondary";
+let statusIcon = "🟡";
+
+if(device.status==="Online"){
+    statusClass="success";
+    statusIcon="🟢";
+}
+else if(device.status==="Offline"){
+    statusClass="danger";
+    statusIcon="🔴";
+}
+
+return `
+
+<div style="width:270px;font-family:Inter,sans-serif;">
+
+<div style="
+    background:#2563eb;
+    color:white;
+    margin:-14px -14px 15px -14px;
+    padding:14px 16px;
+    border-radius:12px 12px 0 0;
+">
+
+    <div style="
+        font-size:17px;
+        font-weight:700;
+    ">
+        📡 ${device.device_name}
+    </div>
+
+    <div style="
+        opacity:.9;
+        font-size:13px;
+    ">
+        ${device.device_id}
+    </div>
+
+</div>
+
+<div class="mb-2">
+
+    <span class="badge bg-${statusClass} px-3 py-2">
+
+        ${statusIcon} ${device.status || "Unknown"}
+
+    </span>
+
+</div>
+
+<table class="table table-sm table-borderless mb-3">
+
+    <tr>
+        <th style="width:90px;">Village</th>
+        <td>${device.village || "-"}</td>
+    </tr>
+
+    <tr>
+        <th>District</th>
+        <td>${device.district || "-"}</td>
+    </tr>
+
+    <tr>
+        <th>Category</th>
+        <td>${device.category.replaceAll("_"," ")}</td>
+    </tr>
+
+    <tr>
+        <th>Battery</th>
+        <td>${device.battery ?? "--"}</td>
+    </tr>
+
+    <tr>
+        <th>Last Seen</th>
+        <td>${device.last_seen ?? "--"}</td>
+    </tr>
+
+</table>
+
+<button
+    class="btn btn-primary w-100 rounded-pill"
+    onclick="showDevice('${device.device_id}')">
+
+    📈 View Analytics
+
+</button>
+
+</div>
+
+`;
+
+}
+/* ============================================================
+   Show Device
+============================================================ */
+
+function showDevice(deviceId){
+
+    const marker = markers[deviceId];
+
+    if(!marker){
+
+        return;
+
+    }
+
+    map.setView(marker.getLatLng(),15);
+
+    marker.openPopup();
+
+    marker.fire("click");
+
+}
+
+/* ============================================================
+   Marker Helper
+============================================================ */
+
+function findMarker(deviceId){
+
+    return markers[deviceId] || null;
+
+}
+/* ============================================================
+   Load Today's Telemetry Chart
+============================================================ */
+
+async function loadChart(tbDeviceId, hardwareId){
+    const metric =
+        document.getElementById("metric").value;
+
+
+    if(!tbDeviceId || !metric){
+
+        return;
+
+    }
+
+
+    try{
+
+        const response = await fetch(
+
+        `/custom-dashboard/api/map/chart/?tb_device_id=${encodeURIComponent(tbDeviceId)}&device_id=${encodeURIComponent(hardwareId)}&metric=${encodeURIComponent(metric)}`
+
+        );
+
+
+        if(!response.ok){
+
+            throw new Error("Unable to load chart data");
+
+        }
+
+
+        const data = await response.json();
+
+
+        chart.data.labels =
+            data.labels || [];
+
+
+        chart.data.datasets[0].label =
+            metric.replaceAll("_"," ");
+
+
+        chart.data.datasets[0].data =
+            data.values || [];
+
+
+        chart.update();
+
+
+    }
+
+    catch(error){
+
+        console.error(
+            "Chart Error:",
+            error
+        );
+
+    }
+
+}
+
+
+/* ============================================================
+   Update Device Information Panel
+============================================================ */
+
+function updateDeviceInfo(device){
+
+    document
+    .getElementById("deviceInfo")
+    .style.display="block";
+
+
+    document
+    .getElementById("emptyState")
+    .style.display="none";
+
+
+    document
+    .getElementById("infoDevice")
+    .innerHTML =
+        device.device_name ?? "-";
+
+
+    document
+    .getElementById("infoVillage")
+    .innerHTML =
+        device.village ?? "-";
+
+
+    document
+    .getElementById("infoBattery")
+    .innerHTML =
+        device.battery != null
+        ?
+        device.battery + "%"
+        :
+        "-";
+
+
+    document
+    .getElementById("infoLastSeen")
+    .innerHTML =
+        device.last_seen ?? "-";
+
+
+
+    let statusHTML = "";
+
+
+    if(device.status==="Online"){
+
+        statusHTML =
+        `
+        <span class="status-online">
+            🟢 Online
+        </span>
+        `;
+
+    }
+
+    else if(device.status==="Offline"){
+
+        statusHTML =
+        `
+        <span class="status-offline">
+            🔴 Offline
+        </span>
+        `;
+
+    }
+
+    else{
+
+        statusHTML =
+        `
+        <span class="status-unknown">
+            🟡 Unknown
+        </span>
+        `;
+
+    }
+
+
+    document
+        .getElementById("infoStatus")
+        .innerHTML = statusHTML;
+        
+}
+/* ============================================================
+   Auto Refresh
+============================================================ */
+
+function startAutoRefresh(){
+
+
+    if(refreshTimer){
+
+        clearInterval(refreshTimer);
+
+    }
+
+
+    refreshTimer =
+        setInterval(
+            function(){
+
+                refreshMap();
+
+            },
+            60000
+        );
+
+}
+
+
+/* ============================================================
+   Refresh Map Without Losing Selection
+============================================================ */
+
+async function refreshMap(){
+
+    const currentDevice =
+        selectedDevice
+        ?
+        selectedDevice.device_id
+        :
+        null;
+
+
+    await loadDevices();
+
+
+    if(currentDevice){
+
+
+        const marker =
+            findMarker(currentDevice);
+
+
+
+        if(marker){
+
+
+            marker.openPopup();
+
+
+            marker.fire("click");
+
+
+        }
+
+
+    }
+
+
+}
+
+
+/* ============================================================
+   Window Resize Fix
+============================================================ */
+
+window.addEventListener(
+    "resize",
+    function(){
+
+        if(map){
+
+            setTimeout(
+                function(){
+
+                    map.invalidateSize();
+
+                },
+                300
+            );
+
+        }
+
+    }
+);
+/* ============================================================
+   Initial Empty Chart Reset
+============================================================ */
+
+function clearChart(){
+
+    if(!chart){
+        return;
+    }
+
+    chart.data.labels = [];
+
+    chart.data.datasets[0].data = [];
+
+    chart.update();
+
+}
+
+
+/* ============================================================
+   Clear Selected Device
+============================================================ */
+
+function clearDeviceSelection(){
+
+    selectedDevice = null;
+
+    document
+    .getElementById("deviceInfo")
+    .style.display="none";
+
+
+    document
+    .getElementById("emptyState")
+    .style.display="block";
+
+
+    clearChart();
+
+}
+
+
+/* ============================================================
+   Handle API Errors
+============================================================ */
+
+function showError(message){
+
+    console.error(message);
+
+}
+
+
+/* ============================================================
+   Final Cleanup
+============================================================ */
+
+</script>
+
+{% endblock %}

@@ -114,6 +114,10 @@ body{
     border-top:5px solid #22c55e;
 }
 
+.map{
+    border-top:5px solid #10b981;
+}
+
 .footer{
 
     margin-top:35px;
@@ -198,6 +202,17 @@ Interactive analytics, charts, filters and reports for Living Lab devices.
 
 </a>
 
+<a class="card map" href="{% url 'dashboard_map' %}">
+
+<div class="icon">🗺️</div>
+
+<div class="title">Device Map</div>
+
+<div class="desc">
+Spatial view of IoT devices, locations, telemetry status and live monitoring on map.
+</div>
+
+</a>
 
 <a class="card status" href="{% url 'device_status_dashboard' %}">
 
