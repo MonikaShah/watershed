@@ -1095,7 +1095,7 @@ Map + Device Details
 
 <!-- TELEMETRY -->
 
-<div class="card shadow-sm border-0 mt-4">
+<div class="card shadow-sm border-0 mt-4" id="chartCard">
 
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
 
@@ -1133,35 +1133,6 @@ Map + Device Details
 Analytics
 ======================================================= -->
 
-<div class="card mt-4">
-
-    <div class="card-header">
-
-        📈 Device Telemetry
-
-        <span class="float-end text-muted">
-
-            Today's Trend
-
-        </span>
-
-    </div>
-
-    <div class="card-body">
-
-        <div class="chart-container">
-
-            <canvas id="deviceChart">
-
-            </canvas>
-
-        </div>
-
-    </div>
-
-</div>
-
-</div>
 
 {% endblock %}
 {% block extra_js %}
@@ -1184,7 +1155,8 @@ let chart;
 let markers = {};
 let selectedDevice = null;
 let refreshTimer = null;
-
+let noTelemetryAlertShown = false;
+let chartLoading = false;
 /* ============================================================
    Marker Icons
 ============================================================ */
@@ -1266,6 +1238,8 @@ function initMap(){
 ============================================================ */
 
 function initChart(){
+    console.log("INIT CHART CALLED");
+
 
     const ctx = document
         .getElementById("deviceChart")
@@ -1458,6 +1432,7 @@ function resetSelection(){
     document.getElementById("deviceInfo").style.display = "none";
 
     document.getElementById("emptyState").style.display = "block";
+    
 
     chart.data.labels = [];
 
@@ -1499,6 +1474,7 @@ try{
     let total = 0;
     let online = 0;
     let offline = 0;
+    let inactive = 0;
 
     const bounds = [];
 
@@ -1516,9 +1492,16 @@ try{
             icon = greenIcon;
             online++;
         }
-        else if(device.status==="Offline"){
-            icon = redIcon;
+        else if (device.status === "Offline") {
+            icon = orangeIcon;
             offline++;
+        }
+        else if (device.status === "Inactive") {
+            icon = redIcon;
+            inactive++;
+        }
+        else {
+            icon = orangeIcon;
         }
 
         const marker = L.marker(
@@ -1536,6 +1519,8 @@ try{
         marker.bindPopup(createPopup(device));
 
         marker.on("click",function(){
+            console.log("Marker clicked:", device);
+
 
             selectedDevice = device;
 
@@ -1563,7 +1548,7 @@ try{
     document.getElementById("totalDevices").innerHTML = total;
     document.getElementById("onlineDevices").innerHTML = online;
     document.getElementById("offlineDevices").innerHTML = offline;
-    document.getElementById("kpiInactive").innerHTML = total - online - offline;
+    document.getElementById("kpiInactive").innerHTML = inactive;
 
 
     document.getElementById("lastRefresh").innerHTML =
@@ -1656,7 +1641,7 @@ return `
 
     <span class="badge bg-${statusClass} px-3 py-2">
 
-        ${statusIcon} ${device.status || "Unknown"}
+        ${statusIcon} ${device.status || "Inactive"}
 
     </span>
 
@@ -1738,67 +1723,81 @@ function findMarker(deviceId){
 /* ============================================================
    Load Today's Telemetry Chart
 ============================================================ */
+async function loadChart(tbDeviceId, deviceId){
 
-async function loadChart(tbDeviceId, hardwareId){
-    const metric =
-        document.getElementById("metric").value;
-
-
-    if(!tbDeviceId || !metric){
-
+    document.getElementById("chartCard").style.display = "block";
+    
+    if(chartLoading){
         return;
-
     }
 
+    chartLoading = true;
+    const metric = document.getElementById("metric").value;
+
+    if(!tbDeviceId || !deviceId || !metric){
+        return;
+    }
+
+    // Clear previous chart
+    chart.data.labels = [];
+    chart.data.datasets[0].data = [];
+    chart.update();
+
+    const url =
+        `/custom-dashboard/api/map/chart/?tb_device_id=${encodeURIComponent(tbDeviceId)}&device_id=${encodeURIComponent(deviceId)}&metric=${encodeURIComponent(metric)}`;
 
     try{
 
-        const response = await fetch(
-
-        `/custom-dashboard/api/map/chart/?tb_device_id=${encodeURIComponent(tbDeviceId)}&device_id=${encodeURIComponent(hardwareId)}&metric=${encodeURIComponent(metric)}`
-
-        );
-
+        const response = await fetch(url);
 
         if(!response.ok){
-
             throw new Error("Unable to load chart data");
-
         }
-
 
         const data = await response.json();
 
+        // No telemetry
+        if(!data.labels || data.labels.length === 0){
 
-        chart.data.labels =
-            data.labels || [];
+            chart.data.labels = [];
+            chart.data.datasets[0].data = [];
+            chart.update();
 
+            document.getElementById("chartCard").style.display = "none";
 
-        chart.data.datasets[0].label =
-            metric.replaceAll("_"," ");
+            alert("No telemetry found for this device.");
 
+            return;
+        }
+    
+        // noTelemetryAlertShown = false;
 
-        chart.data.datasets[0].data =
-            data.values || [];
-
+        chart.data.labels = data.labels;
+        chart.data.datasets[0].label = metric.replaceAll("_"," ");
+        chart.data.datasets[0].data = data.values;
 
         chart.update();
-
-
+        document.getElementById("chartCard").style.display = "block";
     }
-
     catch(error){
 
-        console.error(
-            "Chart Error:",
-            error
-        );
+        console.error(error);
+
+        chart.data.labels = [];
+        chart.data.datasets[0].data = [];
+        chart.update();
+
+        document.getElementById("chartCard").style.display = "none";
+
 
     }
+    finally{
+
+        chartLoading = false;
+
+        }
 
 }
-
-
 /* ============================================================
    Update Device Information Panel
 ============================================================ */
@@ -1874,7 +1873,7 @@ function updateDeviceInfo(device){
         statusHTML =
         `
         <span class="status-unknown">
-            🟡 Unknown
+            🟡 Inactive
         </span>
         `;
 

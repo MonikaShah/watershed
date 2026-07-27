@@ -327,7 +327,9 @@ Real-Time IoT Monitoring & Analytics
         from{transform:rotate(0deg);}
         to{transform:rotate(360deg);}
     }
-
+    body{
+    background:#f5f7fb;
+}
     
 @media (max-width:768px){
 
@@ -669,7 +671,9 @@ Real-Time IoT Monitoring & Analytics
         <a class="active" href="{% url 'dashboard' %}">
             📊 Dashboard
         </a>
-
+        <a href="{% url 'dashboard_map' %}">
+            Device Map
+        </a>
         <a href="{% url 'device_status_dashboard' %}">
             💚 Device Status
         </a>
