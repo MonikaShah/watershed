@@ -5,6 +5,7 @@ from . import views
 urlpatterns = [
     # path("", views.main_portal, name="main_portal"),
     path("portal/", views.main_portal, name="main_portal"),
+    path("custom-dashboard/<str:template>",views.main_portal,name="main_portal_template",),
     path('ingest/', views.ingest_data, name='ingest_data'),
     path('ota/<str:device_type>/', views.ota, name='ota'),
     path('iot-dashboard/', views.dashboard_v5, name='dashboard'),

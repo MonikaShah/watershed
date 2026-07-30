@@ -1,6 +1,7 @@
 from email import message
 # from tkinter import EventType
 import traceback
+from django.http import Http404
 from django.shortcuts import render
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -31,8 +32,28 @@ TB_URL = settings.TB_URL
 TB_USERNAME = settings.TB_USERNAME
 TB_PASSWORD = settings.TB_PASSWORD
 
-def main_portal(request):
-    return render(request, "ingestion/main_portal.html")
+# def main_portal(request):
+#     return render(request, "ingestion/main_portal.html")
+
+def main_portal(request, template="main_portal"):
+
+    allowed_templates = {
+        "main_portal",
+        "portal1",
+        "portal2",
+        "portal3",
+        "portal4",
+        "portal_blueprint",
+        "portal_minimal",
+    }
+
+    if template not in allowed_templates:
+        raise Http404()
+
+    return render(
+        request,
+        f"ingestion/{template}.html",
+    )
 
 @api_view(['POST'])
 def ingest_data(request):

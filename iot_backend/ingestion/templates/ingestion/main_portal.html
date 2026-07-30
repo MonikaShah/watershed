@@ -1,11 +1,18 @@
+</html>
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Living Lab Portal</title>
 
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <style>
+<title>IWRM Living Lab Portal</title>
+
+<!-- Bootstrap Icons -->
+<link rel="stylesheet"
+href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+<style>
 
 *{
     margin:0;
@@ -14,240 +21,426 @@
 }
 
 body{
+
     font-family:"Segoe UI",Arial,sans-serif;
-    background:#0f172a;
-    color:#fff;
-    min-height:100vh;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:25px;
+    background:#f4f6f9;
+    color:#2d3748;
+
 }
 
-.container{
-    width:100%;
-    max-width:1000px;
-}
+/* ================= HEADER ================= */
 
 .header{
-    text-align:center;
-    margin-bottom:40px;
+
+    background:#0b5fa5;
+    color:white;
+    padding:22px 40px;
+    box-shadow:0 2px 8px rgba(0,0,0,.08);
+
 }
 
 .header h1{
-    font-size:40px;
-    margin-bottom:10px;
+
+    font-size:30px;
+    font-weight:600;
+    margin-bottom:4px;
+
 }
 
 .header p{
-    color:#94a3b8;
-    font-size:17px;
+
+    font-size:15px;
+    opacity:.9;
+
 }
+
+/* ================= CONTAINER ================= */
+
+.container{
+
+    max-width:1200px;
+    margin:40px auto;
+    padding:0 20px;
+
+}
+
+/* ================= GRID ================= */
 
 .grid{
 
     display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
-    gap:22px;
+    grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+    gap:24px;
 
 }
 
+/* ================= CARD ================= */
+
 .card{
 
-    background:#1e293b;
-    border-radius:16px;
-    padding:35px 25px;
+    background:white;
+    border:1px solid #d9dee7;
+    border-left:5px solid #0b5fa5;
+    border-radius:6px;
     text-decoration:none;
-    color:white;
-    transition:.25s;
-    border:1px solid rgba(255,255,255,.08);
+    color:inherit;
+    transition:.2s;
+    display:flex;
+    flex-direction:column;
 
 }
 
 .card:hover{
 
-    transform:translateY(-6px);
-    box-shadow:0 20px 40px rgba(0,0,0,.35);
+    box-shadow:0 8px 20px rgba(0,0,0,.08);
+    transform:translateY(-2px);
+
+}
+
+.card-body{
+
+    padding:24px;
 
 }
 
 .icon{
 
-    font-size:50px;
-    margin-bottom:20px;
-
-}
-
-.title{
-
-    font-size:22px;
-    font-weight:700;
-    margin-bottom:10px;
-
-}
-
-.desc{
-
-    color:#cbd5e1;
-    line-height:1.6;
-    font-size:15px;
-
-}
-
-.tb{
-    border-top:5px solid #8b5cf6;
-}
-
-.dashboard{
-    border-top:5px solid #3b82f6;
-}
-
-.status{
-    border-top:5px solid #06b6d4;
-}
-
-.logs{
-    border-top:5px solid #f97316;
-}
-
-.admin{
-    border-top:5px solid #22c55e;
-}
-
-.map{
-    border-top:5px solid #10b981;
-}
-
-.footer{
-
-    margin-top:35px;
-    text-align:center;
-    color:#64748b;
-    font-size:14px;
-
-}
-
-@media(max-width:700px){
-
-.header h1{
-    font-size:30px;
-}
-
-.header p{
-    font-size:15px;
-}
-
-.card{
-
-    padding:25px;
-
-}
-
-.icon{
-
-    font-size:42px;
+    width:52px;
+    height:52px;
+    border-radius:50%;
+    background:#eaf3fb;
+    color:#0b5fa5;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:24px;
+    margin-bottom:18px;
 
 }
 
 .title{
 
     font-size:20px;
+    font-weight:600;
+    color:#1e293b;
+    margin-bottom:12px;
+
+}
+
+.desc{
+
+    color:#5d6877;
+    line-height:1.6;
+    font-size:15px;
+    min-height:70px;
+
+}
+
+/* ================= FOOTER OF CARD ================= */
+
+.card-footer{
+
+    margin-top:auto;
+    border-top:1px solid #edf0f3;
+    padding:16px 24px;
+    display:flex;
+    justify-content:flex-end;
+
+}
+
+.open-btn{
+
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+
+    background:#0b5fa5;
+    color:white;
+
+    padding:8px 18px;
+    border-radius:4px;
+
+    font-size:14px;
+    font-weight:600;
+
+}
+
+.card:hover .open-btn{
+
+    background:#084b83;
+
+}
+
+/* ================= FOOTER ================= */
+
+.footer{
+
+    margin-top:50px;
+    padding:20px;
+    text-align:center;
+    color:#6b7280;
+    border-top:1px solid #d9dee7;
+    font-size:14px;
+
+}
+
+/* ================= MOBILE ================= */
+
+@media(max-width:768px){
+
+.header{
+
+    padding:20px;
+
+}
+
+.header h1{
+
+    font-size:24px;
+
+}
+
+.container{
+
+    margin:25px auto;
+
+}
+
+.grid{
+
+    grid-template-columns:1fr;
 
 }
 
 }
 
-    </style>
+</style>
 
 </head>
 
 <body>
 
-<div class="container">
-
 <div class="header">
 
-<h1>🌐 Living Lab Portal</h1>
+<h1>IWRM Living Lab IoT Portal</h1>
 
 <p>
-Centralized access to dashboards, monitoring and administration.
+Centre for Technology Alternatives for Rural Areas (CTARA), IIT Bombay
 </p>
 
 </div>
 
+<div class="container">
+
 <div class="grid">
 
-<a class="card tb" href="https://watershed.mahamaps.com" target="_blank">
+<!-- ThingsBoard -->
 
-<div class="icon">📊</div>
+<a class="card"
+href="https://watershed.mahamaps.com"
+target="_blank">
 
-<div class="title">ThingsBoard</div>
+<div class="card-body">
+
+<div class="icon">
+<i class="bi bi-speedometer2"></i>
+</div>
+
+<div class="title">
+ThingsBoard
+</div>
 
 <div class="desc">
-View live telemetry, alarms, entities and ThingsBoard dashboards.
+Access live telemetry, alarms, device entities and operational dashboards for the Living Lab deployment.
+</div>
+
+</div>
+
+<div class="card-footer">
+
+<div class="open-btn">
+
+Open
+
+<i class="bi bi-arrow-right"></i>
+
+</div>
+
 </div>
 
 </a>
 
+<!-- Dashboard -->
 
-<a class="card dashboard" href="{% url 'dashboard' %}">
+<a class="card"
+href="{% url 'dashboard' %}">
 
-<div class="icon">📈</div>
+<div class="card-body">
 
-<div class="title">Custom Dashboard</div>
+<div class="icon">
+<i class="bi bi-bar-chart-line"></i>
+</div>
+
+<div class="title">
+Custom Dashboard
+</div>
 
 <div class="desc">
-Interactive analytics, charts, filters and reports for Living Lab devices.
+Interactive analytics, sensor trends, charts, reports and device-wise performance indicators.
+</div>
+
+</div>
+
+<div class="card-footer">
+
+<div class="open-btn">
+
+Open
+
+<i class="bi bi-arrow-right"></i>
+
+</div>
+
 </div>
 
 </a>
 
-<a class="card map" href="{% url 'dashboard_map' %}">
+<!-- Device Map -->
 
-<div class="icon">🗺️</div>
+<a class="card"
+href="{% url 'dashboard_map' %}">
 
-<div class="title">Device Map</div>
+<div class="card-body">
+
+<div class="icon">
+<i class="bi bi-geo-alt"></i>
+</div>
+
+<div class="title">
+Device Map
+</div>
 
 <div class="desc">
-Spatial view of IoT devices, locations, telemetry status and live monitoring on map.
+Spatial visualization of deployed IoT devices with live telemetry, locations and monitoring status.
+</div>
+
+</div>
+
+<div class="card-footer">
+
+<div class="open-btn">
+
+Open
+
+<i class="bi bi-arrow-right"></i>
+
+</div>
+
 </div>
 
 </a>
 
-<a class="card status" href="{% url 'device_status_dashboard' %}">
+<!-- Status -->
 
-<div class="icon">📡</div>
+<a class="card"
+href="{% url 'device_status_dashboard' %}">
 
-<div class="title">Device Status</div>
+<div class="card-body">
+
+<div class="icon">
+<i class="bi bi-broadcast"></i>
+</div>
+
+<div class="title">
+Device Status
+</div>
 
 <div class="desc">
-Monitor online/offline status, latest telemetry and connectivity health.
+View online/offline status, latest communication time, battery level and connectivity health.
+</div>
+
+</div>
+
+<div class="card-footer">
+
+<div class="open-btn">
+
+Open
+
+<i class="bi bi-arrow-right"></i>
+
+</div>
+
 </div>
 
 </a>
 
+<!-- Logs -->
 
-<a class="card logs" href="{% url 'device_logs_page' %}">
+<a class="card"
+href="{% url 'device_logs_page' %}">
 
-<div class="icon">📝</div>
+<div class="card-body">
 
-<div class="title">Device Logs</div>
+<div class="icon">
+<i class="bi bi-journal-text"></i>
+</div>
+
+<div class="title">
+Device Logs
+</div>
 
 <div class="desc">
-Browse historical telemetry, events and communication logs.
+Browse historical telemetry records, communication logs and recorded events for deployed devices.
+</div>
+
+</div>
+
+<div class="card-footer">
+
+<div class="open-btn">
+
+Open
+
+<i class="bi bi-arrow-right"></i>
+
+</div>
+
 </div>
 
 </a>
 
+<!-- Admin -->
 
-<a class="card admin" href="{% url 'admin:index' %}">
+<a class="card"
+href="{% url 'admin:index' %}">
 
-<div class="icon">⚙️</div>
+<div class="card-body">
 
-<div class="title">Administration</div>
+<div class="icon">
+<i class="bi bi-gear"></i>
+</div>
+
+<div class="title">
+Administration
+</div>
 
 <div class="desc">
-Manage users, devices, permissions and backend configuration.
+Manage users, permissions, devices, metadata and application configuration through the administration panel.
+</div>
+
+</div>
+
+<div class="card-footer">
+
+<div class="open-btn">
+
+Open
+
+<i class="bi bi-arrow-right"></i>
+
+</div>
+
 </div>
 
 </a>
@@ -256,12 +449,16 @@ Manage users, devices, permissions and backend configuration.
 
 <div class="footer">
 
-Living Lab IoT Platform. © C-TARA, IIT-Bombay. All rights reserved.
+<strong>IWRM Living Lab IoT Platform</strong><br>
+
+Centre for Technology Alternatives for Rural Areas (CTARA), IIT Bombay<br>
+
+© 2026 All Rights Reserved.
 
 </div>
+
 
 </div>
 
 </body>
-
 </html>
