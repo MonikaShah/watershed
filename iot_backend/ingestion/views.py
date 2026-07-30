@@ -83,6 +83,7 @@ def flatten_json(data, parent_key=""):
 # GET TELEMETRY
 # =========================================
 
+
 def get_telemetry(
     token,
     tb_device_id,
@@ -101,24 +102,16 @@ def get_telemetry(
     # =====================================
 
     keys_url = (
-
         f"{TB_URL}/api/plugins/telemetry/DEVICE/"
         f"{tb_device_id}/keys/timeseries"
-        
-
     )
 
-    r = requests.get(
-        keys_url,
-        headers=headers
-    )
-
+    r = requests.get(keys_url, headers=headers)
     r.raise_for_status()
 
     keys = r.json()
 
     if not keys:
-
         return pd.DataFrame()
 
     keys_str = ",".join(keys)
@@ -128,30 +121,23 @@ def get_telemetry(
     # =====================================
 
     data_url = (
-
         f"{TB_URL}/api/plugins/telemetry/DEVICE/"
         f"{tb_device_id}/values/timeseries"
-
         f"?keys={keys_str}"
-
         f"&startTs={start_ts}"
-
         f"&endTs={end_ts}"
-
         f"&limit=50000"
-
     )
 
-    r = requests.get(
-        data_url,
-        headers=headers
-    )
-
+    r = requests.get(data_url, headers=headers)
     r.raise_for_status()
 
     data = r.json()
 
     rows = []
+
+    start_time = pd.to_datetime(start_ts, unit="ms", utc=True)
+    end_time = pd.to_datetime(end_ts, unit="ms", utc=True)
 
     # =====================================
     # LOOP TB KEYS
@@ -161,15 +147,29 @@ def get_telemetry(
 
         for item in values:
 
+            flat = {}
+
             try:
 
-                # ts = pd.to_datetime(
-                #     item["ts"],
-                #     unit="ms"
-                # )
-                raw_value = item["value"]
+                raw_value = item.get("value")
 
-                parsed = json.loads(raw_value)
+                if raw_value is None:
+                    continue
+
+                # -----------------------------
+                # Parse JSON
+                # -----------------------------
+                try:
+                    parsed = json.loads(raw_value)
+                except Exception:
+                    print("\nINVALID JSON")
+                    print(raw_value)
+                    continue
+
+                if not isinstance(parsed, dict):
+                    print("NOT A DICTIONARY:", parsed)
+                    continue
+
                 device_ts = parsed.get("timestamp")
 
                 if not device_ts:
@@ -181,48 +181,49 @@ def get_telemetry(
                     utc=True
                 )
 
-                start_time = pd.to_datetime(start_ts, unit="ms", utc=True)
-                end_time = pd.to_datetime(end_ts, unit="ms", utc=True)
-
                 if ts < start_time or ts >= end_time:
                     continue
 
-                if not isinstance(parsed, dict):
-                    continue
-
-                # =================================
-                # FILTER DEVICE
-                # =================================
+                # -----------------------------
+                # Device Filter
+                # -----------------------------
 
                 device_name = parsed.get("Device_ID", "")
 
-                # REMOVE PREFIX
                 clean_device = (
-                    device_name
+                    str(device_name)
                     .replace("SAMBHAV_", "")
                     .strip()
                 )
 
                 selected_clean = (
-                    selected_device
+                    str(selected_device)
                     .replace("SAMBHAV_", "")
                     .strip()
                 )
-               
-                # print("Telemetry Device_ID :", repr(device_name))
-                # print("Clean telemetry     :", repr(clean_device))
-                # print("Selected device     :", repr(selected_clean))
 
                 if clean_device != selected_clean:
-                    # print("SKIPPED")
                     continue
 
-                # =================================
-                # FLATTEN JSON
-                # =================================
+                # -----------------------------
+                # Debug
+                # -----------------------------
+
+                print("=" * 80)
+                print("TB DEVICE ID :", tb_device_id)
+                print("SELECTED     :", selected_device)
+                print("RAW DEVICE   :", device_name)
+                print("KEY          :", tb_key)
+
+                # -----------------------------
+                # Flatten
+                # -----------------------------
 
                 flat = flatten_json(parsed)
-                # print("FLAT =", flat)
+
+                if not isinstance(flat, dict):
+                    print("flatten_json returned:", type(flat))
+                    continue
 
                 for k in flat.keys():
 
@@ -235,20 +236,11 @@ def get_telemetry(
 
                         print("\n===================")
                         print("BAD KEY:", k)
-                        print("RAW JSON:")
                         print(json.dumps(parsed, indent=2))
                         print("===================\n")
 
-                # =======================do==========
-                # REMOVE META
-                # =================================
-
                 flat.pop("timestamp", None)
                 flat.pop("Device_ID", None)
-
-                # =================================
-                # STORE
-                # =================================
 
                 row = {
                     "time": ts,
@@ -259,19 +251,26 @@ def get_telemetry(
 
                 rows.append(row)
 
-            except Exception as e:
+            except Exception:
 
-                print("PARSE ERROR:", e)
-            print("FLAT =", flat)
+                print("\n" + "=" * 80)
+                print("ERROR PROCESSING TELEMETRY")
+                print("TB DEVICE :", tb_device_id)
+                print("SELECTED  :", selected_device)
+                print("KEY       :", tb_key)
+                print("ITEM      :", item)
+                print("=" * 80)
+
+                traceback.print_exc()
+
+                continue
 
     # =====================================
     # EMPTY
     # =====================================
 
     if not rows:
-
         print("NO ROWS FOUND")
-
         return pd.DataFrame()
 
     # =====================================
@@ -280,69 +279,55 @@ def get_telemetry(
 
     df = pd.DataFrame(rows)
 
-    # =====================================
-    # REMOVE DUPLICATES
-    # =====================================
-
     df = df.sort_values("time")
     df = df.drop_duplicates("time", keep="last")
 
-    # =====================================
-    # FORMAT TIME
-    # =====================================
-    df["time"] = pd.to_datetime(
-        df["time"],
-        utc=True
-    ).dt.tz_convert("Asia/Kolkata")
+    df["time"] = (
+        pd.to_datetime(df["time"], utc=True)
+        .dt.tz_convert("Asia/Kolkata")
+    )
 
     # =====================================
-    # WLD TIME INTERVAL AGGREGATION
+    # RESAMPLE
     # =====================================
 
     if interval:
 
-            df = df.sort_values("time")
+        df = df.sort_values("time")
 
-            # keep only numeric telemetry columns
-            numeric_cols = []
+        numeric_cols = []
 
-            for col in df.columns:
+        for col in df.columns:
 
-                if col not in ["time", "device_id"]:
+            if col not in ["time", "device_id"]:
 
-                    df[col] = pd.to_numeric(
-                        df[col],
-                        errors="coerce"
-                    )
-
-                    if df[col].notna().any():
-                        numeric_cols.append(col)
-
-
-            if numeric_cols:
-
-                temp = (
-                    df.set_index("time")[numeric_cols]
-                    .resample(interval)
-                    .mean()
-                    .reset_index()
+                df[col] = pd.to_numeric(
+                    df[col],
+                    errors="coerce"
                 )
 
+                if df[col].notna().any():
+                    numeric_cols.append(col)
 
-                # restore device id
-                temp["device_id"] = selected_device
+        if numeric_cols:
 
-                df = temp
+            temp = (
+                df.set_index("time")[numeric_cols]
+                .resample(interval)
+                .mean()
+                .reset_index()
+            )
 
+            temp["device_id"] = selected_device
 
-    print("AFTER RESAMPLE")
-    
+            df = temp
+
     print("========== BEFORE RETURN ==========")
     print(df.head())
     print(df.columns)
     print(df.shape)
     print("===================================")
-    print(df.columns.tolist())
+
     return df
 # ----------------------------
 # Dashboard page
