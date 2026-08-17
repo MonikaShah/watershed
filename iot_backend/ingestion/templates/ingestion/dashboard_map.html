@@ -1222,7 +1222,16 @@ function initMap(){
             attribution:"Tiles © Esri"
         }
     ).addTo(map);
-
+    L.tileLayer.wms(
+    "https://geonode.communitygis.in/geoserver/geonode/wms",
+    {
+        layers: "geonode:iot_microwatershed_villages_v1",
+        format: "image/png",
+        transparent: true,
+        version: "1.1.1",
+        tiled: true
+    }
+).addTo(map);
     markerGroup = L.markerClusterGroup({
         showCoverageOnHover:false,
         spiderfyOnMaxZoom:true,
@@ -1280,7 +1289,7 @@ function initChart(){
                     display:true
                 }
             },
-
+            
             scales:{
 
                 x:{
@@ -1773,11 +1782,24 @@ async function loadChart(tbDeviceId, deviceId){
         // noTelemetryAlertShown = false;
 
         chart.data.labels = data.labels;
-        chart.data.datasets[0].label = metric.replaceAll("_"," ");
+        let chartLabel = metric.replaceAll("_", " ");
+
+        if (metric === "water_level") {
+            chartLabel = "water level (m)";
+        }
+
+        chart.data.datasets[0].label = chartLabel;
+
+        
         chart.data.datasets[0].data = data.values;
 
         chart.update();
         document.getElementById("chartCard").style.display = "block";
+        // Smoothly scroll to the telemetry chart
+        document.getElementById("chartCard").scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+        });
     }
     catch(error){
 
