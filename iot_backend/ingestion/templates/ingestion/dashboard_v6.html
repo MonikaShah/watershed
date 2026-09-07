@@ -822,16 +822,16 @@ Real-Time IoT Monitoring & Analytics
 
         <!-- VIEW -->
 
-        <!-- <div>
+        <!-- -- <div> -->
 
-        <button type="button"
+        <!-- <button type="button"
                 onclick="showView('chart')">
 
         📈 Chart
 
-        </button> -->
+        </button> 
 
-        <!-- <button type="button"
+         <button type="button"
                 onclick="showView('table')">
 
         📋 Table
@@ -843,7 +843,7 @@ Real-Time IoT Monitoring & Analytics
 
         ⬇ Download CSV
 
-        </button> -->
+        </button>  -->
         <!-- <button type="button"
                 onclick="Device()">
 
@@ -859,11 +859,18 @@ Real-Time IoT Monitoring & Analytics
         <div class="card">
 
             <h3 id="title">
-                {% if selected_device %}
-                Telemetry Data for SAMBHAV_{{ selected_device }}
+                <!-- {% if selected_device %}
+                    {{ categorySelect }}
+                    {% if categorySelect == "water_level" %}
+                        Dug Well Water Level Data - SAMBHAV_{{ selected_device }}
+                    {% elif categorySelect == "weather_station" %}
+                        Weather Station Data - SAMBHAV_{{ selected_device }}
+                        {% else %}
+                            Data for - SAMBHAV_{{ selected_device }}
+                    {% endif %}
                 {% else %}
                 Select a device to view telemetry
-                {% endif %}
+                {% endif %} -->
                 </h3>
 
             
@@ -1212,7 +1219,40 @@ Real-Time IoT Monitoring & Analytics
 
     console.log("RAW DATA:", rawData);
     console.log("DEVICE MAP:", deviceMap);
+    function updateTitle() {
 
+        const title = document.getElementById("title");
+
+        const device = document.getElementById("deviceSelect").value;
+
+        const category = categorySelect.value;
+
+        // if (!device) {
+        //     title.textContent = "Select a device to view telemetry";
+        //     return;
+        // }
+
+        if (category === "water_level") {
+
+            title.textContent =
+                `Dug Well Water Level Data for SAMBHAV_${device}`;
+
+        } else if (category === "weather_station") {
+
+            title.textContent =
+                `Weather Station Data for SAMBHAV_${device}`;
+
+        } else if (category === "flow_meter") {
+
+            title.textContent =
+                `Flow Meter Data for SAMBHAV_${device}`;
+
+        } else {
+
+            title.textContent =
+                `Data for SAMBHAV_${device}`;
+        }
+        }
     if (!rawData.length) {
 
         document.getElementById("title").textContent =
@@ -2220,7 +2260,7 @@ function openTab(tab, btn) {
     // =====================================
 
     window.onload = function(){
-
+        
         // DATES
 
         if(selectedFrom){
@@ -2272,7 +2312,7 @@ function openTab(tab, btn) {
         showView("chart");
 
         // RENDER DATA
-
+        updateTitle();
         if (rawData.length > 0) {
 
             document.getElementById("noDataMessage").style.display = "none";
