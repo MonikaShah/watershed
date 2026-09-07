@@ -130,12 +130,28 @@ def get_telemetry(
     r = requests.get(keys_url, headers=headers)
     r.raise_for_status()
 
+    # keys = r.json()
+
+    # if not keys:
+    #     return pd.DataFrame()
+
+    # keys_str = ",".join(keys)
+
     keys = r.json()
 
     if not keys:
         return pd.DataFrame()
 
-    keys_str = ",".join(keys)
+    selected_key = f"SAMBHAV_{selected_device}"
+
+    if selected_key not in keys:
+        print("SELECTED KEY NOT FOUND:", selected_key)
+        print("AVAILABLE KEYS:", keys)
+        return pd.DataFrame()
+
+    keys_str = selected_key
+
+    print("REQUESTING ONLY KEY:", keys_str)
 
     # =====================================
     # GET DATA
@@ -154,7 +170,17 @@ def get_telemetry(
     r.raise_for_status()
 
     data = r.json()
+    print("\n========== TB RESPONSE DEBUG ==========")
+    print("TB KEYS:", data.keys())
 
+    for tb_key, values in data.items():
+        print("KEY:", tb_key)
+        print("NUMBER OF VALUES:", len(values))
+
+        for item in values[:5]:
+            print("ITEM:", item)
+
+    print("=======================================\n")
     rows = []
 
     start_time = pd.to_datetime(start_ts, unit="ms", utc=True)
@@ -297,7 +323,15 @@ def get_telemetry(
     # =====================================
     # DATAFRAME
     # =====================================
+    print("\n========== ROW DEBUG ==========")
+    print("ROWS BEFORE DATAFRAME:", len(rows))
 
+    for row in rows[:10]:
+        print(row.get("time"), row.get("device_id"))
+
+    print("UNIQUE TIMES:", len(set(row["time"] for row in rows)))
+
+    print("================================\n")
     df = pd.DataFrame(rows)
 
     df = df.sort_values("time")
@@ -454,7 +488,8 @@ def dashboard_v5(request):
             table_data = df.to_dict(
                 orient="records"
             )
-
+            print("TABLE DATA COUNT:", len(table_data))
+            print("TABLE DATA:", table_data[:5])
             print("ROWS:", len(table_data))
 
         else:
@@ -1000,94 +1035,340 @@ def get_device_latest_status(token, tb_device_id):
 # ----------------------------
 # CSV Export
 # ----------------------------
+# ----------------------------
+# CSV Export
+# ----------------------------
 
 def export_csv(request):
-    if request.method == "POST":
-        table_data = json.loads(request.POST.get("table_data", "[]"))
-        columns = json.loads(request.POST.get("columns", "[]"))
 
-        if not table_data:
-            return HttpResponse("No data available", status=200)
+    if request.method != "POST":
+        return HttpResponse(
+            "POST request required",
+            status=405
+        )
 
-        df = pd.DataFrame(table_data)
+    # ====================================
+    # GET FILTERS ONLY
+    # ====================================
 
-        # ✅ FIX NaT / NaN crash
-        df = df.fillna("")
-        if "time" in df.columns:
-            df["time"] = pd.to_datetime(df["time"], errors="coerce")
+    device = request.POST.get("device", "")
+    device_name = request.POST.get(
+        "device_name",
+        "device"
+    )
+
+    category = request.POST.get(
+        "category",
+        "category"
+    )
+
+    village = request.POST.get(
+        "village",
+        "village"
+    )
+
+    from_date = request.POST.get(
+        "from_date",
+        ""
+    )
+
+    to_date = request.POST.get(
+        "to_date",
+        ""
+    )
+
+    interval = request.POST.get(
+        "interval",
+        "5min"
+    )
+
+    # ====================================
+    # VALIDATION
+    # ====================================
+
+    if not device:
+        return HttpResponse(
+            "Device not selected",
+            status=400
+        )
+
+    if not from_date or not to_date:
+        return HttpResponse(
+            "Date range is required",
+            status=400
+        )
+
+    # ====================================
+    # FIND THINGSBOARD DEVICE
+    # ====================================
+
+    token = get_tb_token()
+
+    devices = get_tb_devices(token)
+
+    tb_device_id = None
+
+    for d in devices:
+
+        if "SAMBHAV" in d.get(
+            "name",
+            ""
+        ).upper():
+
+            tb_device_id = d["id"]["id"]
+
+            break
+
+    if not tb_device_id:
+
+        return HttpResponse(
+            "ThingsBoard device not found",
+            status=500
+        )
+
+    # ====================================
+    # CONVERT DATE → TIMESTAMP
+    # ====================================
+
+    try:
+
+        start_ts = int(
+            pd.Timestamp(from_date)
+            .tz_localize("Asia/Kolkata")
+            .timestamp() * 1000
+        )
+
+        end_ts = int(
+            (
+                pd.Timestamp(to_date)
+                + pd.Timedelta(days=1)
+            )
+            .tz_localize("Asia/Kolkata")
+            .timestamp() * 1000
+        )
+
+    except Exception as e:
+
+        return HttpResponse(
+            f"Invalid date: {e}",
+            status=400
+        )
+
+    # ====================================
+    # FETCH TELEMETRY AGAIN
+    # ====================================
+
+    print("\n==============================")
+    print("CSV EXPORT")
+    print("Device :", device)
+    print("From   :", from_date)
+    print("To     :", to_date)
+    print("Interval:", interval)
+    print("==============================")
+
+    df = get_telemetry(
+
+        token=token,
+
+        tb_device_id=tb_device_id,
+
+        selected_device=device,
+
+        start_ts=start_ts,
+
+        end_ts=end_ts,
+
+        interval=interval
+
+    )
+
+    # ====================================
+    # NO DATA
+    # ====================================
+
+    if df.empty:
+
+        return HttpResponse(
+            "No data available for the selected period",
+            status=200
+        )
+
+    # ====================================
+    # CLEAN DATA
+    # ====================================
+
+    df = df.copy()
+
+    df = df.fillna("")
+
+    if "time" in df.columns:
+
+        df["time"] = pd.to_datetime(
+            df["time"],
+            errors="coerce"
+        )
 
         if df["time"].dt.tz is None:
-            df["time"] = df["time"].dt.tz_localize("Asia/Kolkata")
+
+            df["time"] = (
+                df["time"]
+                .dt
+                .tz_localize("Asia/Kolkata")
+            )
+
         else:
-            df["time"] = df["time"].dt.tz_convert("Asia/Kolkata")
+
+            df["time"] = (
+                df["time"]
+                .dt
+                .tz_convert("Asia/Kolkata")
+            )
+
+    # ====================================
+    # SAFE FILE NAME
+    # ====================================
+
+    safe_device = (
+        str(device_name)
+        .replace(" ", "_")
+        .replace("/", "_")
+        .replace("\\", "_")
+    )
+
+    safe_village = (
+        str(village)
+        .replace(" ", "_")
+        .replace("/", "_")
+        .replace("\\", "_")
+    )
+
+    safe_category = (
+        str(category)
+        .replace(" ", "_")
+        .replace("/", "_")
+        .replace("\\", "_")
+    )
+
+    filename = (
+        f"{safe_category}_"
+        f"{safe_village}_"
+        f"{safe_device}_"
+        f"{device}_"
+        f"{from_date}_to_{to_date}.csv"
+    )
+
+    # ====================================
+    # RETURN CSV
+    # ====================================
+
+    response = HttpResponse(
+        content_type="text/csv"
+    )
+
+    response[
+        "Content-Disposition"
+    ] = (
+        f'attachment; filename="{filename}"'
+    )
+
+    df.to_csv(
+        response,
+        index=False
+    )
+
+    print(
+        "CSV EXPORT ROWS:",
+        len(df)
+    )
+
+    return response
+# def export_csv(request):
+#     if request.method == "POST":
+#         table_data = json.loads(request.POST.get("table_data", "[]"))
+#         columns = json.loads(request.POST.get("columns", "[]"))
+
+#         if not table_data:
+#             return HttpResponse("No data available", status=200)
+
+#         df = pd.DataFrame(table_data)
+
+#         # ✅ FIX NaT / NaN crash
+#         df = df.fillna("")
+#         if "time" in df.columns:
+#             df["time"] = pd.to_datetime(df["time"], errors="coerce")
+
+#         if df["time"].dt.tz is None:
+#             df["time"] = df["time"].dt.tz_localize("Asia/Kolkata")
+#         else:
+#             df["time"] = df["time"].dt.tz_convert("Asia/Kolkata")
         
-        device = request.POST.get("device", "device")
+#         device = request.POST.get("device", "device")
 
-        device_name = request.POST.get(
-            "device_name",
-            "device"
-        )
+#         device_name = request.POST.get(
+#             "device_name",
+#             "device"
+#         )
 
-        category = request.POST.get(
-            "category",
-            "category"
-        )
+#         category = request.POST.get(
+#             "category",
+#             "category"
+#         )
 
-        village = request.POST.get(
-            "village",
-            "village"
-        )
+#         village = request.POST.get(
+#             "village",
+#             "village"
+#         )
 
-        from_date = request.POST.get(
-            "from_date",
-            ""
-        )
+#         from_date = request.POST.get(
+#             "from_date",
+#             ""
+#         )
 
-        to_date = request.POST.get(
-            "to_date",
-            ""
-        )
+#         to_date = request.POST.get(
+#             "to_date",
+#             ""
+#         )
 
-        # ====================================
-        # CLEAN FILE NAME
-        # ====================================
+#         # ====================================
+#         # CLEAN FILE NAME
+#         # ====================================
 
-        safe_device = (
-            device_name
-            .replace(" ", "_")
-        )
+#         safe_device = (
+#             device_name
+#             .replace(" ", "_")
+#         )
 
-        safe_village = (
-            village
-            .replace(" ", "_")
-        )
+#         safe_village = (
+#             village
+#             .replace(" ", "_")
+#         )
 
-        safe_category = (
-            category
-            .replace(" ", "_")
-        )
+#         safe_category = (
+#             category
+#             .replace(" ", "_")
+#         )
 
-        filename = (
+#         filename = (
 
-            f"{safe_category}"
+#             f"{safe_category}"
 
-            f"_{safe_village}"
+#             f"_{safe_village}"
 
-            f"_{safe_device}"
+#             f"_{safe_device}"
 
-            f"_{device}"
+#             f"_{device}"
 
-            f"_{from_date}"
+#             f"_{from_date}"
 
-            f"_to_{to_date}.csv"
+#             f"_to_{to_date}.csv"
 
-        )
+#         )
 
-        response = HttpResponse(content_type="text/csv")
-        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+#         response = HttpResponse(content_type="text/csv")
+#         response["Content-Disposition"] = f'attachment; filename="{filename}"'
 
-        df.to_csv(response, index=False)
-        return response
+#         df.to_csv(response, index=False)
+#         return response
     
 
 # views.py
