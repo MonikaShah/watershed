@@ -1332,144 +1332,296 @@ Real-Time IoT Monitoring & Analytics
         }) + " IST";
         }
 
-    function renderChart(){
+        function renderChart(){
 
-        const metrics = Array.from(
-            document.querySelectorAll(
-                '#metricSelector input[type="checkbox"]:checked'
-            )
-        ).map(cb => cb.value);
+const metrics = Array.from(
+    document.querySelectorAll(
+        '#metricSelector input[type="checkbox"]:checked'
+    )
+).map(cb => cb.value);
 
-        if(!metrics.length)
-            return;
+if(!metrics.length)
+    return;
 
-        const labels =
-            rawData.map(
-                r=>r.time
-            );
+const labels =
+    rawData.map(
+        r => r.time
+    );
 
-        const datasets = [];
+const datasets = [];
 
-        metrics.forEach(m=>{
+metrics.forEach(m => {
 
-            const vals =
-                rawData.map(
-                    r=>clean(r[m])
-                );
-
-            if(
-                vals.every(
-                    v=>v===null
-                )
-            ){
-                return;
-            }
-
-            datasets.push({
-
-                label:
-                    cleanLabel(m),
-
-                data:
-                    vals,
-
-                borderWidth:2,
-
-                tension:0.3
-
-            });
-
-        });
-
-        if(chartInstance){
-            chartInstance.destroy();
-            chartInstance=null;
-        }
-        if(!datasets.length)
-            return;
-
-        chartInstance = new Chart(
-
-            document.getElementById(
-                "mainCanvas"
-            ),
-
-            {
-
-                type:"line",
-
-                data:{
-                    labels,
-                    datasets
-                },
-
-                options:{
-
-                    responsive:true,
-
-                    interaction:{
-                        mode:'index',
-                        intersect:false
-                    },
-
-                    scales:{
-
-                        x:{
-
-                            ticks:{
-
-                                callback:function(value){
-
-                                    const rawLabel =
-                                        this.getLabelForValue(value);
-
-                                    return formatISTTime(rawLabel);
-
-                                }
-
-                            }
-
-                        },
-
-                        y:{
-
-                            beginAtZero:false
-
-                        }
-
-                    },
-
-                    plugins:{
-
-                        tooltip:{
-
-                            callbacks:{
-
-                                title:function(context){
-
-                                    if(!context.length){
-                                        return "";
-                                    }
-
-                                    return formatISTTooltip(
-                                        context[0].label
-                                    );
-
-                                }
-
-                            }
-
-                        }
-
-                    }
-
-                    }
-
-            }
-
+    const vals =
+        rawData.map(
+            r => clean(r[m])
         );
 
+    if(
+        vals.every(
+            v => v === null
+        )
+    ){
+        return;
     }
+
+    datasets.push({
+
+        label: cleanLabel(m),
+
+        data: vals,
+
+        borderWidth: 2,
+
+        tension: 0.3,
+
+        // Keep the line a single color
+        borderColor: "#2563eb",
+
+        backgroundColor: "#2563eb",
+
+        pointRadius: 2,
+
+        pointHoverRadius: 5
+
+    });
+
+});
+
+
+if(chartInstance){
+    chartInstance.destroy();
+    chartInstance = null;
+}
+
+if(!datasets.length)
+    return;
+
+
+// ============================================================
+// DAY / NIGHT BACKGROUND SHADING
+// ============================================================
+
+const dayNightBackgroundPlugin = {
+
+    id: "dayNightBackground",
+
+    beforeDraw(chart) {
+
+        const {
+            ctx,
+            chartArea,
+            scales
+        } = chart;
+
+        if(!chartArea || !scales.x)
+            return;
+
+        const xScale = scales.x;
+
+        ctx.save();
+
+
+        // ----------------------------------------------------
+        // Get IST hour from timestamp
+        // ----------------------------------------------------
+
+        function getISTHour(timestamp){
+
+            const date = new Date(timestamp);
+
+            if(isNaN(date.getTime()))
+                return null;
+
+            const parts =
+                new Intl.DateTimeFormat(
+                    "en-IN",
+                    {
+                        timeZone: "Asia/Kolkata",
+                        hour: "numeric",
+                        hour12: false
+                    }
+                ).formatToParts(date);
+
+            const hourPart =
+                parts.find(
+                    p => p.type === "hour"
+                );
+
+            if(!hourPart)
+                return null;
+
+            let hour =
+                parseInt(
+                    hourPart.value,
+                    10
+                );
+
+            // Midnight can sometimes appear as 24
+            if(hour === 24)
+                hour = 0;
+
+            return hour;
+        }
+
+
+        // ----------------------------------------------------
+        // Draw background for each interval
+        // ----------------------------------------------------
+
+        for(let i = 0; i < labels.length - 1; i++){
+
+            const currentTime =
+                labels[i];
+
+            const nextTime =
+                labels[i + 1];
+
+            const hour =
+                getISTHour(currentTime);
+
+            if(hour === null)
+                continue;
+
+
+            const x1 =
+                xScale.getPixelForValue(i);
+
+            const x2 =
+                xScale.getPixelForValue(i + 1);
+
+
+            // ------------------------------------------------
+            // DAY: 7 AM → 9 PM
+            // NIGHT: 9 PM → 7 AM
+            // ------------------------------------------------
+
+            if(hour >= 7 && hour < 21){
+
+                // Day - very light yellow
+                ctx.fillStyle =
+                    "rgba(255, 220, 70, 0.18)";
+
+            }else{
+
+                // Night - very light blue
+                ctx.fillStyle =
+                    "rgba(37, 99, 235, 0.10)";
+            }
+
+
+            ctx.fillRect(
+                x1,
+                chartArea.top,
+                x2 - x1,
+                chartArea.bottom - chartArea.top
+            );
+
+        }
+
+
+        ctx.restore();
+
+    }
+
+};
+
+
+// ============================================================
+// CREATE CHART
+// ============================================================
+
+chartInstance = new Chart(
+
+    document.getElementById(
+        "mainCanvas"
+    ),
+
+    {
+
+        type: "line",
+
+        data: {
+
+            labels,
+
+            datasets
+
+        },
+
+        plugins: [
+            dayNightBackgroundPlugin
+        ],
+
+        options: {
+
+            responsive: true,
+
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+
+            scales: {
+
+                x: {
+
+                    ticks: {
+
+                        callback: function(value){
+
+                            const rawLabel =
+                                this.getLabelForValue(value);
+
+                            return formatISTTime(
+                                rawLabel
+                            );
+
+                        }
+
+                    }
+
+                },
+
+                y: {
+
+                    beginAtZero: false
+
+                }
+
+            },
+
+            plugins: {
+
+                tooltip: {
+
+                    callbacks: {
+
+                        title: function(context){
+
+                            if(!context.length){
+                                return "";
+                            }
+
+                            return formatISTTooltip(
+                                context[0].label
+                            );
+
+                        }
+
+                    }
+
+                }
+
+            }
+
+        }
+
+    }
+
+);
+
+}
     // =====================================
     // ELEMENTS
     // =====================================
