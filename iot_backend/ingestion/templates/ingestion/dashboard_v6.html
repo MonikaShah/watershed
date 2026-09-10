@@ -1332,70 +1332,85 @@ Real-Time IoT Monitoring & Analytics
         }) + " IST";
         }
 
+        const metricColors = {
+            weather_Tw: "#2563eb",      // Temperature
+            weather_RHw: "#16a34a",     // Humidity
+            weather_BP: "#9333ea",      // Pressure
+            weather_RF: "#dc2626",      // Rainfall
+            weather_WS: "#ea580c",      // Wind Speed
+            weather_WD: "#0891b2",      // Wind Direction
+            weather_SR: "#ca8a04",      // Solar Radiation
+
+            water_level_water_lev_mt: "#2563eb",
+
+            flow_rate: "#16a34a",
+            flow_totalizer: "#9333ea"
+        };
+
         function renderChart(){
 
-const metrics = Array.from(
-    document.querySelectorAll(
-        '#metricSelector input[type="checkbox"]:checked'
-    )
-).map(cb => cb.value);
+            const metrics = Array.from(
+                document.querySelectorAll(
+                    '#metricSelector input[type="checkbox"]:checked'
+                )
+            ).map(cb => cb.value);
 
-if(!metrics.length)
-    return;
+            if(!metrics.length)
+                return;
 
-const labels =
-    rawData.map(
-        r => r.time
-    );
+            const labels =
+                rawData.map(
+                    r => r.time
+                );
 
-const datasets = [];
+            const datasets = [];
 
-metrics.forEach(m => {
+            metrics.forEach(m => {
 
-    const vals =
-        rawData.map(
-            r => clean(r[m])
-        );
+                const vals =
+                    rawData.map(
+                        r => clean(r[m])
+                    );
 
-    if(
-        vals.every(
-            v => v === null
-        )
-    ){
-        return;
-    }
+                if(
+                    vals.every(
+                        v => v === null
+                    )
+                ){
+                    return;
+                }
 
-    datasets.push({
+                datasets.push({
 
-        label: cleanLabel(m),
+                    label: cleanLabel(m),
 
-        data: vals,
+                    data: vals,
 
-        borderWidth: 2,
+                    borderWidth: 2,
 
-        tension: 0.3,
+                    tension: 0.3,
 
-        // Keep the line a single color
-        borderColor: "#2563eb",
+                    // Keep the line a single color
+                    borderColor: metricColors[m] || undefined,
 
-        backgroundColor: "#2563eb",
+                    backgroundColor: metricColors[m] || undefined,
 
-        pointRadius: 2,
+                    pointRadius: 2,
 
-        pointHoverRadius: 5
+                    pointHoverRadius: 5
 
-    });
+                });
 
-});
+            });
 
 
-if(chartInstance){
-    chartInstance.destroy();
-    chartInstance = null;
-}
+            if(chartInstance){
+                chartInstance.destroy();
+                chartInstance = null;
+            }
 
-if(!datasets.length)
-    return;
+            if(!datasets.length)
+                return;
 
 
 // ============================================================
@@ -2925,6 +2940,11 @@ function compareDevices() {
 // RENDER CHART
 // =====================================================
 
+// =====================================================
+// RENDER COMPARISON CHART
+// Same line/point behaviour as Single Device chart
+// =====================================================
+
 function rendercompareChart(data) {
 
     const chartDiv =
@@ -2937,35 +2957,67 @@ function rendercompareChart(data) {
             "compareNoData"
         );
 
-
     chartDiv.style.display = "block";
-
     noData.style.display = "none";
 
+    // ---------------------------------------------
+    // NO DATA
+    // ---------------------------------------------
 
     if (data.nodata && data.nodata.length) {
 
         chartDiv.style.display = "none";
-
         noData.style.display = "block";
 
         document.getElementById(
             "noDataDevice"
         ).innerHTML =
-
             data.nodata.join("<br>");
 
         return;
-
     }
 
+    // ---------------------------------------------
+    // DESTROY OLD CHART
+    // ---------------------------------------------
 
-    if (comparisonChart)
+    if (comparisonChart) {
+
         comparisonChart.destroy();
 
+        comparisonChart = null;
+    }
+
+    // ---------------------------------------------
+    // APPLY SAME STYLE AS SINGLE DEVICE
+    // ---------------------------------------------
+
+    const datasets =
+        (data.datasets || []).map(dataset => {
+
+            return {
+
+                ...dataset,
+
+                borderWidth: 2,
+
+                tension: 0.3,
+
+                // Same point behaviour as
+                // Single Device chart
+                pointRadius: 2,
+
+                pointHoverRadius: 5
+
+            };
+
+        });
+
+    // ---------------------------------------------
+    // CREATE CHART
+    // ---------------------------------------------
 
     comparisonChart =
-
         new Chart(
 
             document.getElementById(
@@ -2978,9 +3030,11 @@ function rendercompareChart(data) {
 
                 data: {
 
-                    labels: data.labels,
+                    labels:
+                        data.labels,
 
-                    datasets: data.datasets
+                    datasets:
+                        datasets
 
                 },
 
@@ -3003,6 +3057,14 @@ function rendercompareChart(data) {
                         legend: {
 
                             position: "top"
+
+                        },
+
+                        tooltip: {
+
+                            mode: "index",
+
+                            intersect: false
 
                         }
 
