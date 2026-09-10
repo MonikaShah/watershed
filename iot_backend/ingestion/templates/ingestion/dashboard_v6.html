@@ -1218,6 +1218,14 @@ Real-Time IoT Monitoring & Analytics
     };
 
     console.log("RAW DATA:", rawData);
+
+    console.log(
+        "WATER LEVEL DATA:",
+        rawData.map(r => ({
+            time: r.time,
+            water_level: r.water_level_water_lev_mt
+        }))
+    );
     console.log("DEVICE MAP:", deviceMap);
     function updateTitle() {
 
